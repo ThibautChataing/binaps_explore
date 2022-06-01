@@ -1,0 +1,12 @@
+ This is supplementary material for the paper "Differentiable Pattern Set Mining".
+ 
+ 
+ Data constructed specifically by the authors is given in the Data/ directory, more information on this data, and where to find the other -- publicly available -- data sets used in the paper, is given in Data/README.
+ 
+ A python implementation of BinaPs based on PyTorch is available in the Binaps_code/ directory, along with a README on package dependencies and examples.
+ 
+ For all other methods, we used the publicly available implementations and set hyperparameters according to their suggestions:
+ 
+ DESC -- https://github.com/sdall/disc-aaai20
+ SLIM -- https://eda.mmci.uni-saarland.de/prj/slim/
+ Asso(with MDL4BMF) -- https://people.mpi-inf.mpg.de/~pmiettin/mdl4bmf/
