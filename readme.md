@@ -1,6 +1,10 @@
 # BINAPS
 binary autoencoder interpretable
 
+*Coming from : https://eda.mmci.uni-saarland.de/pubs/2021/binaps-fischer,vreeken.pdf*
+Code source : http://eda.mmci.uni-saarland.de/prj/binaps/
+
+
 ## Input data
 ### Format
 Data expected : transaction file (sparse binary matrix representation). For better use of memory space, files represent each matrix row on a separate line, where each non-zero entry is given by the corresponding index separated by whitespace.

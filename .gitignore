@@ -2,3 +2,5 @@ Data/data
 *.zip
 Genomes
 .DS_Store
+.vscode/
+results/
