@@ -21,26 +21,30 @@ import my_loss as mylo
 
 def initWeights(w, data):
     """
-    Fills the input Tensor with the value 0
-    :param w: Tensor input
-    :param data: Not used
-    :return:
+    > This function initializes the weights of the network to zero
+    
+    :param w: The weight tensor to be initialized
+    :param data: The data that is passed to the function
     """
     init.constant_(w, 0)
 
 
+# It's a neural network with one hidden layer, with the hidden layer having the same number of neurons
+# as the input layer
 class Net(nn.Module):
     """
     nn.Module : Base class for all neural network modules
     """
     def __init__(self, init_weights, init_bias, data_sparsity, device_cpu, device_gpu):
         """
-
-        :param init_weights: init weights for the model, tensor 2D {n <= features (size of hidden layer), features}
-        :param init_bias: init bias for the model, Tensor of -1 with the dim of init_weights.size[0]
+        It initializes the network with the given weights and biases, and sets the data sparsity
+        
+        :param init_weights: initial weights for the model, tensor 2D {n <= features (size of hidden layer),
+        features}
+        :param init_bias: initial bias for the model, Tensor of -1 with the dim of init_weights.size[0]
         :param data_sparsity: data_non_zeros/prod_data.shape
-        :param device_cpu: def for torch of the cpu
-        :param device_gpu: def for torch of the gpu and = device_cpu if there is no gpu available
+        :param device_cpu: the CPU device
+        :param device_gpu: the GPU device
         """
         # TODO : Why sparsity ?
         # TODO : vérify dim of init_weights
@@ -55,6 +59,13 @@ class Net(nn.Module):
 
 
     def forward(self, x):
+        """
+        > The function takes in an input, passes it through a fully connected layer, applies an activation
+        function, passes it through another fully connected layer, and applies another activation function
+        
+        :param x: the input to the network
+        :return: The output of the network.
+        """
         x = self.fc0_enc(x)
         x = self.act0(x, False)
         x = self.fc3_dec(x)
@@ -62,12 +73,33 @@ class Net(nn.Module):
         return output
 
     def clipWeights(self, mini=-1, maxi=1):
+        """
+        It clips the weights of the first layer of the encoder to be between -1 and 1, and it sets the bias
+        of the first activation layer to be 0
+        
+        :param mini: minimum value for the weights
+        :param maxi: the maximum value of the weights, defaults to 1 (optional)
+        """
         self.fc0_enc.clipWeights(mini, maxi)
         self.act0.clipBias()
         self.act3.noBias()
 
 
 def train(model, device_cpu, device_gpu, train_loader, optimizer, lossFun, epoch, log_interval):
+    """
+    > We iterate over the training data, and for each batch we zero the gradients, compute the output of
+    the network, compute the loss, backpropagate the loss, and update the weights
+    
+    :param model: the model we're training
+    :param device_cpu: the CPU device
+    :param device_gpu: the device to use for training
+    :param train_loader: the training data
+    :param optimizer: the optimizer used to train the model
+    :param lossFun: the loss function to use
+    :param epoch: the number of times we go through the entire dataset
+    :param log_interval: how often to print the training loss
+    :return: The loss of the model
+    """
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         data = data.to(device_gpu)
@@ -88,6 +120,15 @@ def train(model, device_cpu, device_gpu, train_loader, optimizer, lossFun, epoch
 
 
 def test(model, device_cpu, device_gpu, test_loader, lossFun):
+    """
+    It runs the model on the test set, and prints the average loss and accuracy
+    
+    :param model: the model we're training
+    :param device_cpu: the CPU device
+    :param device_gpu: the GPU device to use
+    :param test_loader: the test data loader
+    :param lossFun: the loss function to use
+    """
     model.eval()
     test_loss = 0
     correct = 0
@@ -106,6 +147,25 @@ def test(model, device_cpu, device_gpu, test_loader, lossFun):
 
 
 def learn(input, lr, gamma, weight_decay, epochs, hidden_dim, train_set_size, batch_size, test_batch_size, log_interval, device_cpu, device_gpu):
+    """
+    > This function takes in a bunch of parameters, loads the data, initializes the model, optimizer,
+    and loss function, and then trains the model
+    
+    :param input: the name of the file containing the data
+    :param lr: learning rate
+    :param gamma: the learning rate decay factor
+    :param weight_decay: the weight decay parameter for the Adam optimizer
+    :param epochs: number of epochs to train for
+    :param hidden_dim: the number of hidden units in the network. If -1, then it's set to the number of
+    columns in the input data
+    :param train_set_size: the number of rows in the training set
+    :param batch_size: the number of samples to use in each batch
+    :param test_batch_size: the number of samples to use for testing
+    :param log_interval: how often to print out the loss
+    :param device_cpu: the device to use for the CPU
+    :param device_gpu: the GPU device to use
+    :return: The model, the weights, and the dataset.
+    """
 
 
     kwargs = {}

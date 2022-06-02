@@ -20,6 +20,12 @@ import network as mynet
 
 
 def main():
+    """
+    It takes a file name, a learning rate, a learning rate step gamma, a weight decay, a number of
+    epochs, a hidden layer size, a proportion of the data to be used for training, a batch size, a test
+    batch size, a log interval, and two devices (CPU and GPU) and returns a model, a weight matrix, and
+    a training data matrix.
+    """
     # Training settings
     parser = argparse.ArgumentParser(description='Binary Pattern Network implementation')
     parser.add_argument('-i','--input', required=True,
