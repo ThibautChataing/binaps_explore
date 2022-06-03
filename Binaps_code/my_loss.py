@@ -51,7 +51,17 @@ class weightedXor(nn.Module):
         """
 
         relu = nn.ReLU()
+
+        # ND: relu((output - target)) == relu(output - target)
+        #  relu((output - target)) get the diff between output and target cropping when target > output ( = -1)
+        # --> 1 if output wrong (o=1 and t=0)
+        # --> 0 (0 or -1) if output true or output wrong but = 0 (t=1)
+        # -----> loss emphasize when FP over FN
+        #  tensor.sum(1) do the sum of the tensor over lines
+        #  tensor.mul(weight)  multiply the tensor by weight = sparcity of the data
+        #  tensor.mean() get the mean of the 1D vector
         diff = relu((output - target)).sum(1).mul(self.weight).mean() + relu((target - output)).sum(1).mul(1-self.weight).mean()
+
         diff += self.weight_decay*(((w - 1/target.size()[1])).sum(1).clamp(min=1).pow(2).sum())
 
         return diff
