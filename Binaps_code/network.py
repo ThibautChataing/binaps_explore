@@ -106,7 +106,7 @@ def train(model, device_cpu, device_gpu, train_loader, optimizer, lossFun, epoch
         optimizer.zero_grad()
         output = model(data)
         itEW = [par for name, par in model.named_parameters() if name.endswith("enc.weight")]
-        loss = lossFun(output, data, next(iter(itEW)))
+        loss = lossFun(output, data, next(iter(itEW)))  # data equal target, == loss.forward()
         loss.backward()
         optimizer.step()
         model.clipWeights()
@@ -180,7 +180,7 @@ def learn(input, lr, gamma, weight_decay, epochs, hidden_dim, train_set_size, ba
 
     new_weights = torch.zeros(hidden_dim, trainDS.ncol(), device=device_gpu)
     initWeights(new_weights, trainDS.data)
-    new_weights.clamp_(1/(trainDS.ncol()), 1)
+    new_weights.clamp_(1/(trainDS.ncol()), 1)  # init weights with 1/nbr_of_feature
     bInit = torch.zeros(hidden_dim, device=device_gpu)
     init.constant_(bInit, -1)
 
