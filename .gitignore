@@ -7,3 +7,4 @@ Genomes
 .DS_Store
 .vscode/
 results/
+.ipynb_checkpoints
