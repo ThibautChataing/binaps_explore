@@ -1,4 +1,7 @@
 Data/data
+data
+*.html
+*.csv
 *.zip
 Genomes
 .DS_Store
