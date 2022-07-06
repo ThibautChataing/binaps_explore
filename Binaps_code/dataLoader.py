@@ -22,7 +22,7 @@ def readDatFile(dat_file):
 
     Return : sparse matrice, sparsity
     """
-    logging.error("Read file has been tempered with to make it work with github data. Look for TODO in this file to correct")
+    logging.critical("Read file has been tempered with to make it work with github data. Look for TODO in this file to correct")
     ncol = -1
     nrow = 0
     count_1 = 0
@@ -120,13 +120,20 @@ class DatDataset(Dataset):
         self.sparsity = sparsity
         logging.info(f"Data sparity = {self.sparsity}")
 
+        logging.critical("Bad bad way to do it !")
         if is_training:
             ran = np.arange(0, math.ceil(train_proportion * self.data.shape[0]))
         else:
             ran = np.arange(math.ceil(train_proportion * self.data.shape[0]), self.data.shape[0])
 
         logging.info("Input data will be converted to tensor for torch")
-        self.data = torch.from_numpy(self.data[ran, :])  # , device=device_cpu)
+        logging.critical("Train test split is BAD ! Make a good random use of it !")
+
+        # old way to do it, that break the code
+        #self.data = torch.from_numpy(self.data[ran, :])  # , device=device_cpu)
+        row_max = math.ceil(train_proportion * self.data.shape[0])
+        self.data = torch.from_numpy(self.data[:row_max, :])  # , device=device_cpu)
+
         logging.info("Input data converted to tensor for torch")
 
     def __len__(self):
