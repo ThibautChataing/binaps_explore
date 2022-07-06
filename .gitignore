@@ -8,3 +8,4 @@ Genomes
 .vscode/
 results/
 .ipynb_checkpoints
+*.dat
