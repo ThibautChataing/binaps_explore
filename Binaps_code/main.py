@@ -17,6 +17,11 @@ import dataLoader as mydl
 import my_layers as myla
 import my_loss as mylo
 import network as mynet
+import logging
+
+logging.basicConfig(
+    format='[%(levelname)s] %(module)s in %(funcName)s at %(lineno)dl : %(message)s',
+    level=logging.DEBUG, force=True)
 
 
 def main():
@@ -66,7 +71,7 @@ def main():
         print("WARNING: Running purely on CPU. Slow.")
     else:
         device_gpu = torch.device("cuda")
-
+    logging.debug("Start")
     model, weights, train_data = mynet.learn(args.input, args.lr, args.gamma, args.weight_decay, args.epochs, args.hidden_dim, args.train_set_size, args.batch_size, args.test_batch_size, args.log_interval, device_cpu, device_gpu)
 
     if args.save_model:

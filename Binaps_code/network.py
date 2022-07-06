@@ -8,7 +8,7 @@ import torch.nn.functional as F  # convolution functions
 import torch.optim as optim  # package implementing various optimization algorithms
 from torch.nn import init  # package to init
 from torch.optim.lr_scheduler import MultiStepLR  # Adapt learning rate : Decays the learning rate of each parameter group by gamma once the number of epoch reaches one of the milestones.
-
+import logging
 import numpy as np
 import math
 
@@ -169,21 +169,27 @@ def learn(input, lr, gamma, weight_decay, epochs, hidden_dim, train_set_size, ba
 
 
     kwargs = {}
+    logging.debug(f"Start pull data from {input}")
     trainDS = mydl.DatDataset(input, train_set_size, True, device_cpu)
     train_loader = torch.utils.data.DataLoader(trainDS,
         batch_size=batch_size, shuffle=True, **kwargs)
     test_loader = torch.utils.data.DataLoader(mydl.DatDataset(input, train_set_size, False, device_cpu),
         batch_size=test_batch_size, shuffle=True, **kwargs)
 
+    logging.debug("Pull data ok")
     if hidden_dim == -1:
         hidden_dim = trainDS.ncol()
 
+    logging.debug("Init weight")
     new_weights = torch.zeros(hidden_dim, trainDS.ncol(), device=device_gpu)
     initWeights(new_weights, trainDS.data)
     new_weights.clamp_(1/(trainDS.ncol()), 1)  # init weights with 1/nbr_of_feature
+
+    logging.debug("Init bias")
     bInit = torch.zeros(hidden_dim, device=device_gpu)
     init.constant_(bInit, -1)
 
+    logging.debug("Init model")
     model = Net(new_weights, bInit, trainDS.getSparsity(), device_cpu, device_gpu).to(device_gpu)
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
