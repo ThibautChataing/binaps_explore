@@ -9,3 +9,4 @@ Genomes
 results/
 .ipynb_checkpoints
 *.dat
+*.pyc
