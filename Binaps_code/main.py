@@ -18,7 +18,6 @@ import my_layers as myla
 import my_loss as mylo
 import network as mynet
 import logging
-import multiprocessing
 logging.basicConfig(
     format='[%(levelname)s] %(module)s in %(funcName)s at %(lineno)dl : %(message)s',
     level=logging.DEBUG, force=True)
@@ -31,9 +30,6 @@ def main():
     batch size, a log interval, and a devices (CPU or GPU) and returns a model, a weight matrix, and
     a training data matrix.
     """
-
-    # Done because of torch.from_numpy is bugging !
-    multiprocessing.set_start_method('spawn', True)
 
     # Training settings
     parser = argparse.ArgumentParser(description='Binary Pattern Network implementation')
