@@ -17,7 +17,7 @@ import gc # garbage collector
 import dataLoader as mydl
 import my_layers as myla
 import my_loss as mylo
-
+import logging
 
 def initWeights(w, data):
     """
@@ -107,7 +107,7 @@ def test(model, device_cpu, device_gpu, test_loader, lossFun):
 
 def learn(input, lr, gamma, weight_decay, epochs, hidden_dim, train_set_size, batch_size, test_batch_size, log_interval, device_cpu, device_gpu):
 
-
+    logging.debug("Info dataset")
     kwargs = {}
     trainDS = mydl.DatDataset(input, train_set_size, True, device_cpu)
     train_loader = torch.utils.data.DataLoader(trainDS,
@@ -118,9 +118,12 @@ def learn(input, lr, gamma, weight_decay, epochs, hidden_dim, train_set_size, ba
     if hidden_dim == -1:
         hidden_dim = trainDS.ncol()
 
+    logging.info("Init weight")
     new_weights = torch.zeros(hidden_dim, trainDS.ncol(), device=device_gpu)
     initWeights(new_weights, trainDS.data)
     new_weights.clamp_(1/(trainDS.ncol()), 1)
+
+    logging.info("Init bias")
     bInit = torch.zeros(hidden_dim, device=device_gpu)
     init.constant_(bInit, -1)
 
@@ -129,11 +132,12 @@ def learn(input, lr, gamma, weight_decay, epochs, hidden_dim, train_set_size, ba
 
     lossFun = mylo.weightedXor(trainDS.getSparsity(), weight_decay, device_gpu)
 
+    logging.info(f"Start training for{epochs}")
     scheduler = MultiStepLR(optimizer, [5,7], gamma=gamma)
     for epoch in range(1, epochs + 1):
         train(model, device_cpu, device_gpu, train_loader, optimizer, lossFun, epoch, log_interval)
 
         test(model, device_cpu, device_gpu, test_loader, lossFun)
         scheduler.step()
-
+    logging.info("Training done")
     return model, new_weights, trainDS

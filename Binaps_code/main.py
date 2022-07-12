@@ -12,11 +12,17 @@ import os
 import datetime
 import numpy as np
 import math
+import logging
 
 import dataLoader as mydl
 import my_layers as myla
 import my_loss as mylo
 import network as mynet
+
+
+logging.basicConfig(
+    format='[%(levelname)s] %(module)s in %(funcName)s at %(lineno)dl : %(message)s',
+    level=logging.DEBUG, force=True)
 
 
 def main():
@@ -59,19 +65,23 @@ def main():
     device_cpu = torch.device("cpu")
     if not torch.cuda.is_available():
         device_gpu = device_cpu
-        print("WARNING: Running purely on CPU. Slow.")
+        logging.warning("Working on CPU, SLOW !")
     else:
         device_gpu = torch.device("cuda")
+        logging.info("Working on GPU")
 
+    logging.debug("Start")
     model, weights, train_data = mynet.learn(args.input, args.lr, args.gamma, args.weight_decay, args.epochs, args.hidden_dim, args.train_set_size, args.batch_size, args.test_batch_size, args.log_interval, device_cpu, device_gpu)
 
     if args.save_model:
-        torch.save(model.state_dict(), os.path.join(args.output_dir, f"_{now}_ternary_net.pt"))
+        file = os.path.join(args.output_dir, f"_{now}_ternary_net.pt")
+        torch.save(model.state_dict(), file)
+        logging.info(f"Model saved to {file}")
 
     with torch.no_grad():
-
+        file_pat = os.path.join(args.output_dir, args.input[:-4] + f"_{now}.binaps.patterns")
         print("\n\n\nPatterns:\n")
-        with open(os.path.join(args.output_dir, args.input[:-4] + f"_{now}.binaps.patterns"),'w') as patF:
+        with open(file_pat, 'w') as patF:
             for hn in myla.BinarizeTensorThresh(weights, .2):
                 pat = torch.squeeze(hn.nonzero())
                 supp_full = (train_data.matmul(hn.cpu()) == hn.sum().cpu()).sum().cpu().numpy()
@@ -79,7 +89,8 @@ def main():
                 if hn.sum() >= 2:
                     print(pat.cpu().numpy(), "(", supp_full, "/", supp_half, ")")
                     print(pat.cpu().numpy(), file=patF)
+        logging.info(f"Pattern saved to {file_pat}")
 
-
+    logging.info("Finished.")
 if __name__ == '__main__':
     main()
