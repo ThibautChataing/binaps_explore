@@ -96,6 +96,6 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.stderr.write = logging.error
-    sys.stdout.write = logging.info
+    #sys.stderr.write = logging.error
+    #sys.stdout.write = logging.info
     main()
