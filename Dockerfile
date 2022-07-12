@@ -21,7 +21,7 @@ COPY ./github_explore/github_cyber_commit_over_week_without_empty_line_2022-07-0
 CMD ["python", \
     "/workspace/binaps_explore/Binaps_code/main.py", \
     "-i", \
-    "/workspace/and_synthetic_scale_10_10000_10_0.001_0.05.dat", \
+    "/workspace/github_cyber_commit_over_week_without_empty_line_2022-07-06T10:15:00.656093.dat", \
     "--save_model", \
     "--output_dir", \
     "/workspace/container_0"]
