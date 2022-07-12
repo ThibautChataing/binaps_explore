@@ -9,10 +9,13 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
+import logging
+import tqdm
 
 def readDatFile(dat_file):
     ncol = -1
     nrow = 0
+    logging.debug("Read .dat file to find input dimension")
     with open(dat_file) as datF:
         # read .dat format line by line
         l = datF.readline()
@@ -32,6 +35,8 @@ def readDatFile(dat_file):
             nrow += 1
             l = datF.readline()
     data = np.zeros((nrow, ncol), dtype=np.single)
+    logging.info(f"Input databse : row={nrow}, col={ncol}")
+    logging.debug("Filling input DB")
     with open(dat_file) as datF:
         # read .dat format line by line
         l = datF.readline()
@@ -83,6 +88,7 @@ class DatDataset(Dataset):
         data = readDatFile(dat_file)
         self.data = np.asarray(data)
         self.sparsity = np.count_nonzero(self.data) / np.prod(self.data.shape)
+        logging.info(f"Sparsity of input = {self.sparsity}")
         if is_training:
             ran = np.arange(0, math.ceil(train_proportion * self.data.shape[0]))
         else:

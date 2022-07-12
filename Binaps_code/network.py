@@ -107,7 +107,7 @@ def test(model, device_cpu, device_gpu, test_loader, lossFun):
 
 def learn(input, lr, gamma, weight_decay, epochs, hidden_dim, train_set_size, batch_size, test_batch_size, log_interval, device_cpu, device_gpu):
 
-    logging.debug("Info dataset")
+    logging.debug("Init dataset")
     kwargs = {}
     trainDS = mydl.DatDataset(input, train_set_size, True, device_cpu)
     train_loader = torch.utils.data.DataLoader(trainDS,
