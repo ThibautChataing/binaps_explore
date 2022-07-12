@@ -9,7 +9,7 @@ from torch.optim.lr_scheduler import MultiStepLR
 
 
 import os
-
+import datetime
 import numpy as np
 import math
 
@@ -44,12 +44,14 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save_model', action='store_true', default=False,
                         help='save the current Model')
+    parser.add_argument('-o', '--output_dir', default='.',
+                        help='output directory to save things')
     parser.add_argument('--hidden_dim', type=int, default=-1,
                         help='size for the hidden layer (default: #features)')
     parser.add_argument('--thread_num', type=int, default=16,
                         help='number of threads to use (default: 16)')
     args = parser.parse_args()
-
+    now = datetime.datetime.today().isoformat(sep='T', timespec='seconds')
     torch.manual_seed(args.seed)
 
     torch.set_num_threads(args.thread_num)
@@ -64,12 +66,12 @@ def main():
     model, weights, train_data = mynet.learn(args.input, args.lr, args.gamma, args.weight_decay, args.epochs, args.hidden_dim, args.train_set_size, args.batch_size, args.test_batch_size, args.log_interval, device_cpu, device_gpu)
 
     if args.save_model:
-        torch.save(model.state_dict(), "ternary_net.pt")
+        torch.save(model.state_dict(), os.path.join(args.output_dir, datetime.datetime.today()"ternary_net.pt"))
 
     with torch.no_grad():
 
         print("\n\n\nPatterns:\n")
-        with open(args.input[:-4] + '.binaps.patterns','w') as patF:
+        with open(os.path.join(args.output_dir, args.input[:-4] + f"_{now}.binaps.patterns"),'w') as patF:
             for hn in myla.BinarizeTensorThresh(weights, .2):
                 pat = torch.squeeze(hn.nonzero())
                 supp_full = (train_data.matmul(hn.cpu()) == hn.sum().cpu()).sum().cpu().numpy()
