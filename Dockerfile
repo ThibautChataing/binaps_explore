@@ -10,7 +10,7 @@ RUN mkdir -p /workspace && chown -R 42420:42420 /workspace
 ENV HOME /workspace
 WORKDIR /workspace
 
-RUN git clone -b origin https://github.com/ThibautChataing/binaps_explore.git \
+RUN git clone -b ovh_ai_training https://github.com/ThibautChataing/binaps_explore.git \
         && cd binaps_explore \
         && python -m pip install pandas scipy
 
@@ -21,8 +21,10 @@ COPY ./github_explore/github_cyber_commit_over_week_without_empty_line_2022-07-0
 CMD ["python", \
     "/workspace/binaps_explore/Binaps_code/main.py", \
     "-i", \
-    "/workspace/and_synthetic_scale_10_10000_10_0.001_0.05.dat" \
-    ,"--save_model"]
+    "/workspace/and_synthetic_scale_10_10000_10_0.001_0.05.dat", \
+    "--save_model", \
+    "--output_dir", \
+    "/workspace/container_0"]
 
 
 # To test as in ovh :
