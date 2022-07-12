@@ -13,6 +13,7 @@ import datetime
 import numpy as np
 import math
 import logging
+import sys
 
 import dataLoader as mydl
 import my_layers as myla
@@ -92,5 +93,9 @@ def main():
         logging.info(f"Pattern saved to {file_pat}")
 
     logging.info("Finished.")
+
+
 if __name__ == '__main__':
+    sys.stderr.write = logging.error
+    sys.stdout.write = logging.info
     main()
