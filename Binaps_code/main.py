@@ -13,6 +13,7 @@ import datetime
 import numpy as np
 import math
 import logging
+import sys
 
 import dataLoader as mydl
 import my_layers as myla
@@ -56,6 +57,8 @@ def main():
                         help='size for the hidden layer (default: #features)')
     parser.add_argument('--thread_num', type=int, default=16,
                         help='number of threads to use (default: 16)')
+    parser.add_argument('--num_feature', type=int, default=-1,
+                        help='expected number of feature (default: 16)')
     args = parser.parse_args()
     now = datetime.datetime.today().isoformat(sep='T', timespec='seconds')
     torch.manual_seed(args.seed)
@@ -71,7 +74,7 @@ def main():
         logging.info("Working on GPU")
 
     logging.debug("Start")
-    model, weights, train_data = mynet.learn(args.input, args.lr, args.gamma, args.weight_decay, args.epochs, args.hidden_dim, args.train_set_size, args.batch_size, args.test_batch_size, args.log_interval, device_cpu, device_gpu)
+    model, weights, train_data = mynet.learn(args.input, args.lr, args.gamma, args.weight_decay, args.epochs, args.hidden_dim, args.train_set_size, args.batch_size, args.test_batch_size, args.log_interval, device_cpu, device_gpu, args.num_feature)
 
     if args.save_model:
         file = os.path.join(args.output_dir, f"_{now}_ternary_net.pt")
@@ -92,5 +95,8 @@ def main():
         logging.info(f"Pattern saved to {file_pat}")
 
     logging.info("Finished.")
+
 if __name__ == '__main__':
+    sys.stderr.write = logging.error
+    sys.stdout.write = logging.info
     main()

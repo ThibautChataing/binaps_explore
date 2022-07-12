@@ -12,13 +12,15 @@ from torch.utils.data import Dataset
 import logging
 import tqdm
 
-def readDatFile(dat_file):
+def readDatFile(dat_file, num_feature:int = -1):
     ncol = -1
     nrow = 0
+    if num_feature = -1
     logging.debug("Read .dat file to find input dimension")
     with open(dat_file) as datF:
         # read .dat format line by line
         l = datF.readline()
+        bprg = tqdm(total=num_feature)
         while l:
             # drop newline
             l = l[:-1]
@@ -84,8 +86,8 @@ class RegDataset(Dataset):
 ## Construct a dataset from a .dat file
 class DatDataset(Dataset):
 
-    def __init__(self, dat_file, train_proportion, is_training, device_cpu):
-        data = readDatFile(dat_file)
+    def __init__(self, dat_file, train_proportion, is_training, device_cpu, num_feature:int = -1):
+        data = readDatFile(dat_file, num_feature)
         self.data = np.asarray(data)
         self.sparsity = np.count_nonzero(self.data) / np.prod(self.data.shape)
         logging.info(f"Sparsity of input = {self.sparsity}")

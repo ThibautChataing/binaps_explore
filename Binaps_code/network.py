@@ -105,11 +105,26 @@ def test(model, device_cpu, device_gpu, test_loader, lossFun):
         100. * correct / len(test_loader.dataset)))
 
 
-def learn(input, lr, gamma, weight_decay, epochs, hidden_dim, train_set_size, batch_size, test_batch_size, log_interval, device_cpu, device_gpu):
+def learn(input,
+          lr,
+          gamma,
+          weight_decay,
+          epochs,
+          hidden_dim,
+          train_set_size,
+          batch_size,
+          test_batch_size,
+          log_interval,
+          device_cpu,
+          device_gpu,
+          num_feature:int = -1):
+    """
+    num_feature (int) : expected number of feature
+    """
 
     logging.debug("Init dataset")
     kwargs = {}
-    trainDS = mydl.DatDataset(input, train_set_size, True, device_cpu)
+    trainDS = mydl.DatDataset(input, train_set_size, True, device_cpu, num_feature)
     train_loader = torch.utils.data.DataLoader(trainDS,
         batch_size=batch_size, shuffle=True, **kwargs)
     test_loader = torch.utils.data.DataLoader(mydl.DatDataset(input, train_set_size, False, device_cpu),
