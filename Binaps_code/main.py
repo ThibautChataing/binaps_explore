@@ -66,7 +66,7 @@ def main():
     model, weights, train_data = mynet.learn(args.input, args.lr, args.gamma, args.weight_decay, args.epochs, args.hidden_dim, args.train_set_size, args.batch_size, args.test_batch_size, args.log_interval, device_cpu, device_gpu)
 
     if args.save_model:
-        torch.save(model.state_dict(), os.path.join(args.output_dir, datetime.datetime.today()"ternary_net.pt"))
+        torch.save(model.state_dict(), os.path.join(args.output_dir, f"_{now}_ternary_net.pt"))
 
     with torch.no_grad():
 
