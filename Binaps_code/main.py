@@ -55,6 +55,8 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save_model', action='store_true', default=False,
                         help='save the current Model')
+    parser.add_argument('-o', "--output_dir", default=False,
+                        help='output directory to save everything')
     parser.add_argument('--hidden_dim', type=int, default=-1,
                         help='size for the hidden layer (default: #features)')
     parser.add_argument('--thread_num', type=int, default=16,
@@ -75,7 +77,7 @@ def main():
     model, weights, train_data = mynet.learn(args.input, args.lr, args.gamma, args.weight_decay, args.epochs, args.hidden_dim, args.train_set_size, args.batch_size, args.test_batch_size, args.log_interval, device_cpu, device_gpu)
 
     if args.save_model:
-        torch.save(model.state_dict(), "ternary_net.pt")
+        torch.save(model.state_dict(), os.path.join(args.output_dir, "ternary_net.pt"))
 
     with torch.no_grad():
 
