@@ -59,6 +59,8 @@ def main():
                         help='number of threads to use (default: 16)')
     args = parser.parse_args()
     now = datetime.datetime.today().isoformat(sep='T', timespec='seconds')
+
+    logging.debug(f"Args : {args}")
     torch.manual_seed(args.seed)
 
     torch.set_num_threads(args.thread_num)

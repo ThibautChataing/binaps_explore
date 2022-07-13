@@ -93,6 +93,7 @@ class DatDataset(Dataset):
             ran = np.arange(0, math.ceil(train_proportion * self.data.shape[0]))
         else:
             ran = np.arange(math.ceil(train_proportion * self.data.shape[0]), self.data.shape[0])
+        logging.debug("Convert data to torch vector")
         self.data = torch.from_numpy(self.data[ran, :])  # , device=device_cpu)
 
     def __len__(self):
