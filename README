@@ -10,3 +10,8 @@
  DESC -- https://github.com/sdall/disc-aaai20
  SLIM -- https://eda.mmci.uni-saarland.de/prj/slim/
  Asso(with MDL4BMF) -- https://people.mpi-inf.mpg.de/~pmiettin/mdl4bmf/
+
+ # Command
+ docker build . --file "Dockerfile" -t tchataing/binaps:run --no-cache
+ docker run --rm --user=42420:42420 tchataing/binaps:run -i /workspace/and_synthetic_scale_10_10000_10_0.001_0.05.dat
+ docker push tchataing/binaps:run
