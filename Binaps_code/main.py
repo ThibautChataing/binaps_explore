@@ -77,12 +77,12 @@ def main():
     model, weights, train_data = mynet.learn(args.input, args.lr, args.gamma, args.weight_decay, args.epochs, args.hidden_dim, args.train_set_size, args.batch_size, args.test_batch_size, args.log_interval, device_cpu, device_gpu)
 
     if args.save_model:
-        file = os.path.join(args.output_dir, f"_{now}_ternary_net.pt")
+        file = os.path.join(args.output_dir, os.path.basename(args.input[:-4]) + f"_{now}_ternary_net.pt")
         torch.save(model.state_dict(), file)
         logging.info(f"Model saved to {file}")
 
     with torch.no_grad():
-        file_pat = os.path.join(args.output_dir, args.input[:-4] + f"_{now}.binaps.patterns")
+        file_pat = os.path.join(args.output_dir, os.path.basename(args.input[:-4]) + f"_{now}.binaps.patterns")
         logging.info("-"*10 + "Patterns:" + "_"*10)
         with open(file_pat, 'w') as patF:
             for hn in myla.BinarizeTensorThresh(weights, .2):
