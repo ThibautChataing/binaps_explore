@@ -21,7 +21,7 @@ import my_loss as mylo
 import network as mynet
 
 
-def set_logger(file_name = None):
+def set_logger(file_name=None):
 
     # create logger for prd_ci
     log = logging.getLogger()
@@ -41,7 +41,7 @@ def set_logger(file_name = None):
     ch.setFormatter(formatter)
 
     # add handlers to logger.
-    if create_file:
+    if file_name:
         log.addHandler(fh)
 
     log.addHandler(ch)
