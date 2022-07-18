@@ -80,9 +80,9 @@ def train(model, device_cpu, device_gpu, train_loader, optimizer, lossFun, epoch
         model.clipWeights()
 
         if batch_idx % log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
+            logging.info(f"Train Epoch: {epoch} [{batch_idx * len(data)}/{len(train_loader.dataset)} "
+                         f"({int(100 * batch_idx / len(train_loader))}%)]\tLoss: "
+                         f"{round(100 * batch_idx / len(train_loader),3)}")
 
     return
 
@@ -100,9 +100,8 @@ def test(model, device_cpu, device_gpu, test_loader, lossFun):
             correct += (output.ne(data.data.view_as(output)).sum(1) == 0).sum()
 
     _, target = next(iter(test_loader))
-    print('\nTest set: Average loss: {:.6f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(test_loader.dataset),
-        100. * correct / len(test_loader.dataset)))
+    logging.info(f"Test set: Average loss: {test_loss}, Accuracy: {correct}/{len(test_loader.dataset)} "
+                 f"({int(100*correct/len(test_loader.dataset))}%)")
 
 
 def learn(input, lr, gamma, weight_decay, epochs, hidden_dim, train_set_size, batch_size, test_batch_size, log_interval, device_cpu, device_gpu):

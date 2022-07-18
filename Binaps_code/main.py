@@ -83,15 +83,16 @@ def main():
 
     with torch.no_grad():
         file_pat = os.path.join(args.output_dir, args.input[:-4] + f"_{now}.binaps.patterns")
-        print("\n\n\nPatterns:\n")
+        logging.info("-"*10 + "Patterns:" + "_"*10)
         with open(file_pat, 'w') as patF:
             for hn in myla.BinarizeTensorThresh(weights, .2):
                 pat = torch.squeeze(hn.nonzero())
                 supp_full = (train_data.matmul(hn.cpu()) == hn.sum().cpu()).sum().cpu().numpy()
                 supp_half = (train_data.matmul(hn.cpu()) >= hn.sum().cpu()/2).sum().cpu().numpy()
                 if hn.sum() >= 2:
-                    print(pat.cpu().numpy(), "(", supp_full, "/", supp_half, ")")
-                    print(pat.cpu().numpy(), file=patF)
+                    logging.info(pat.cpu().numpy(), "(", supp_full, "/", supp_half, ")")
+                    patF.write(pat.cpu().numpy())
+                    logging.info(pat.cpu().numpy())
         logging.info(f"Pattern saved to {file_pat}")
 
     logging.info("Finished.")
