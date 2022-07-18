@@ -78,6 +78,8 @@ def main():
                         help='size for the hidden layer (default: #features)')
     parser.add_argument('--thread_num', type=int, default=16,
                         help='number of threads to use (default: 16)')
+    parser.add_argument('--gpu', action='store_true', default=True,
+                        help='Allow gpu for optimization')
     args = parser.parse_args()
     now = datetime.datetime.today().isoformat(sep='T', timespec='seconds')
 
@@ -93,7 +95,7 @@ def main():
     torch.set_num_threads(args.thread_num)
 
     device_cpu = torch.device("cpu")
-    if not torch.cuda.is_available():
+    if not torch.cuda.is_available() or args.gpu:
         device_gpu = device_cpu
         logging.warning("Working on CPU, SLOW !")
     else:
