@@ -83,7 +83,7 @@ def main():
 
     if not os.path.isdir(args.output_dir):
         os.makedirs(args.output_dir)
-        
+
     log_file = os.path.join(args.output_dir, os.path.basename(args.input[:-4]))
     set_logger(log_file)
 
@@ -118,7 +118,7 @@ def main():
                 supp_half = (train_data.matmul(hn.cpu()) >= hn.sum().cpu()/2).sum().cpu().numpy()
                 if hn.sum() >= 2:
                     logging.info(pat.cpu().numpy(), "(", supp_full, "/", supp_half, ")")
-                    patF.write(pat.cpu().numpy())
+                    patF.write(f"{pat.cpu().numpy()}")
                     logging.info(pat.cpu().numpy())
         logging.info(f"Pattern saved to {file_pat}")
 
