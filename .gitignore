@@ -1,4 +1,5 @@
 Data/data
+output/
 data
 *.html
 *.csv
@@ -10,4 +11,4 @@ results/
 .ipynb_checkpoints
 *.dat
 *.pyc
-.log
+*.log
