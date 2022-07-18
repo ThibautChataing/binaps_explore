@@ -81,12 +81,11 @@ def main():
     args = parser.parse_args()
     now = datetime.datetime.today().isoformat(sep='T', timespec='seconds')
 
+    if not os.path.isdir(args.output_dir):
+        os.makedirs(args.output_dir)
+        
     log_file = os.path.join(args.output_dir, os.path.basename(args.input[:-4]))
     set_logger(log_file)
-
-    if not os.path.isdir(args.output_dir):
-        logging.info(f"create {args.output_dir}")
-        os.makedirs(args.output_dir)
 
     logging.debug(f"Args : {args}")
     torch.manual_seed(args.seed)
