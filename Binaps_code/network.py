@@ -117,12 +117,12 @@ def learn(input, lr, gamma, weight_decay, epochs, hidden_dim, train_set_size, ba
     if hidden_dim == -1:
         hidden_dim = trainDS.ncol()
 
-    logging.info("Init weight")
+    logging.info(f"Init weight line={hidden_dim}, col={trainDS.ncol()}")
     new_weights = torch.zeros(hidden_dim, trainDS.ncol(), device=device_gpu)
     initWeights(new_weights, trainDS.data)
     new_weights.clamp_(1/(trainDS.ncol()), 1)
 
-    logging.info("Init bias")
+    logging.info(f"Init bias line={hidden_dim}")
     bInit = torch.zeros(hidden_dim, device=device_gpu)
     init.constant_(bInit, -1)
 
