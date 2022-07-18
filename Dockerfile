@@ -15,7 +15,6 @@ RUN git clone -b ovh_ai_training https://github.com/ThibautChataing/binaps_explo
         && python -m pip install pandas scipy
 
 COPY ./Data/data/and_synthetic_scale_10_10000_10_0.001_0.05.dat /workspace/.
-COPY ./github_explore/github_cyber_commit_over_week_without_empty_line_2022-07-06T10:15:00.656093.dat /workspace/.
 
 ENTRYPOINT ["python", \
     "/workspace/binaps_explore/Binaps_code/main.py", \
