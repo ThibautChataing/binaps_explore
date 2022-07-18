@@ -84,7 +84,7 @@ def main():
     if not os.path.isdir(args.output_dir):
         os.makedirs(args.output_dir)
 
-    log_file = os.path.join(args.output_dir, os.path.basename(args.input[:-4]))
+    log_file = os.path.join(args.output_dir, os.path.basename(args.input[:-4]) + + f"_{now}_")
     set_logger(log_file)
 
     logging.debug(f"Args : {args}")
