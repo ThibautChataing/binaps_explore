@@ -17,7 +17,7 @@ fi
 hidden_dim=-1;
 if [ "$3" ]
   then
-    hidden_dim=$2;
+    hidden_dim=$3;
 else
   echo "Hidden dim set to default to feature number (-1)"
 fi
