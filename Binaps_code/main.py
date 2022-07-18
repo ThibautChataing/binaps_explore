@@ -117,7 +117,7 @@ def main():
                 supp_full = (train_data.matmul(hn.cpu()) == hn.sum().cpu()).sum().cpu().numpy()
                 supp_half = (train_data.matmul(hn.cpu()) >= hn.sum().cpu()/2).sum().cpu().numpy()
                 if hn.sum() >= 2:
-                    logging.info(pat.cpu().numpy(), "(", supp_full, "/", supp_half, ")")
+                    logging.info(f"{pat.cpu().numpy()}, ({supp_full}/{supp_half})")
                     patF.write(f"{pat.cpu().numpy()}")
                     logging.info(pat.cpu().numpy())
         logging.info(f"Pattern saved to {file_pat}")

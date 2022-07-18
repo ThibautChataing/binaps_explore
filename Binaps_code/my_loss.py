@@ -10,7 +10,7 @@ from torch.autograd import Function
 from scipy.stats import binom
 
 import my_layers as myla
-
+import logging
 
 
 
@@ -24,8 +24,7 @@ class weightedXor(nn.Module):
         self.weight = weight
         ## decay rate
         self.weight_decay = weight_decay
-        print("Data Sparsity:")
-        print(self.weight)
+        logging.info(f"Data Sparsity {self.weight}")
 
     def forward(self, output, target, w):
 
