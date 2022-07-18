@@ -30,7 +30,7 @@ def set_logger(file_name=None):
     # create formatter and add it to the handlers
     formatter = logging.Formatter('[%(levelname)s] %(module)s in %(funcName)s at %(lineno)dl : %(message)s')
 
-    if create_file:
+    if file_name:
         # create file handler for logger.
         fh = logging.FileHandler(file_name + '.log')
         fh.setLevel(level=logging.DEBUG)
@@ -45,6 +45,7 @@ def set_logger(file_name=None):
         log.addHandler(fh)
 
     log.addHandler(ch)
+
 
 def main():
     # Training settings
