@@ -21,10 +21,30 @@ import my_loss as mylo
 import network as mynet
 
 
-logging.basicConfig(
-    format='[%(levelname)s] %(module)s in %(funcName)s at %(lineno)dl : %(message)s',
-    level=logging.DEBUG, force=True)
+def set_logger(file_name = None):
 
+    # create logger for prd_ci
+    log = logging.getLogger()
+    log.setLevel(level=logging.DEBUG)
+
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter('[%(levelname)s] %(module)s in %(funcName)s at %(lineno)dl : %(message)s')
+
+    if create_file:
+        # create file handler for logger.
+        fh = logging.FileHandler(file_name + '.log')
+        fh.setLevel(level=logging.DEBUG)
+        fh.setFormatter(formatter)
+    # reate console handler for logger.
+    ch = logging.StreamHandler()
+    ch.setLevel(level=logging.DEBUG)
+    ch.setFormatter(formatter)
+
+    # add handlers to logger.
+    if create_file:
+        log.addHandler(fh)
+
+    log.addHandler(ch)
 
 def main():
     # Training settings
@@ -59,6 +79,9 @@ def main():
                         help='number of threads to use (default: 16)')
     args = parser.parse_args()
     now = datetime.datetime.today().isoformat(sep='T', timespec='seconds')
+
+    log_file = os.path.join(args.output_dir, os.path.basename(args.input[:-4]))
+    set_logger(log_file)
 
     logging.debug(f"Args : {args}")
     torch.manual_seed(args.seed)
@@ -99,6 +122,4 @@ def main():
 
 
 if __name__ == '__main__':
-    #sys.stderr.write = logging.error
-    #sys.stdout.write = logging.info
     main()
