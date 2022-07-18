@@ -32,7 +32,7 @@ def set_logger(file_name=None):
 
     if file_name:
         # create file handler for logger.
-        fh = logging.FileHandler(file_name + '.log')
+        fh = logging.FileHandler(file_name + '.log', mode='w')
         fh.setLevel(level=logging.DEBUG)
         fh.setFormatter(formatter)
     # reate console handler for logger.
