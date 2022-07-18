@@ -1,11 +1,12 @@
 Data/data
 output/
-data
+data/
+result/
 *.html
 *.csv
 *.zip
 Genomes
-.DS_Store
+.DS_Store/
 .vscode/
 results/
 .ipynb_checkpoints
