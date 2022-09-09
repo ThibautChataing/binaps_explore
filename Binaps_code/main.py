@@ -113,7 +113,7 @@ def main():
 
     with torch.no_grad():
         file_pat = os.path.join(args.output_dir, os.path.basename(args.input[:-4]) + f"_{now}.binaps.patterns")
-        logging.info("-"*10 + "Patterns:" + "_"*10)
+        #logging.info("-"*10 + "Patterns:" + "_"*10)
         with open(file_pat, 'w') as patF:
             for hn in myla.BinarizeTensorThresh(weights, .2):   # We take the weight matrice and binarize with the threshold of 0.2
                 # On parcours toute les lignes de la matrice de poids après binarization
@@ -126,7 +126,7 @@ def main():
 
                     # compte du numbre de ligne dans lesquelles on trouve au moins la moitié du pattern
                     supp_half = (train_data.matmul(hn.cpu()) >= hn.sum().cpu() / 2).sum().cpu().numpy()
-                    logging.info(f"{pat.cpu().numpy()}, ({supp_full}/{supp_half})")
+                    #logging.info(f"{pat.cpu().numpy()}, ({supp_full}/{supp_half})")
                     json.dump(dict(supp_full=supp_full.tolist(), supp_half=supp_half.tolist(), pat=pat.cpu().tolist()), patF, indent=2)
         logging.info(f"Pattern saved to {file_pat}")
 
