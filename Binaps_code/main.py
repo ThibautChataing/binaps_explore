@@ -12,6 +12,7 @@ import os
 import datetime
 import numpy as np
 import math
+import json
 import logging
 import sys
 
@@ -114,18 +115,25 @@ def main():
         file_pat = os.path.join(args.output_dir, os.path.basename(args.input[:-4]) + f"_{now}.binaps.patterns")
         logging.info("-"*10 + "Patterns:" + "_"*10)
         with open(file_pat, 'w') as patF:
-            for hn in myla.BinarizeTensorThresh(weights, .2):
+            for hn in myla.BinarizeTensorThresh(weights, .2):   # We take the weight matrice and binarize with the threshold of 0.2
+                # On parcours toute les lignes de la matrice de poids après binarization
                 pat = torch.squeeze(hn.nonzero())
-                supp_full = (train_data.matmul(hn.cpu()) == hn.sum().cpu()).sum().cpu().numpy()
-                supp_half = (train_data.matmul(hn.cpu()) >= hn.sum().cpu()/2).sum().cpu().numpy()
+
                 if hn.sum() >= 2:
+                    #  Compte du nombre de ligne dans lesquelles on trouve le pattern
+                    #  train_data.matmul(hn.cpu()) -> vector de int où count sur j de train_data[i,j] = hn[i]
+                    supp_full = (train_data.matmul(hn.cpu()) == hn.sum().cpu()).sum().cpu().numpy()
+
+                    # compte du numbre de ligne dans lesquelles on trouve au moins la moitié du pattern
+                    supp_half = (train_data.matmul(hn.cpu()) >= hn.sum().cpu() / 2).sum().cpu().numpy()
                     logging.info(f"{pat.cpu().numpy()}, ({supp_full}/{supp_half})")
-                    patF.write(f"{pat.cpu().numpy()}")
-                    logging.info(pat.cpu().numpy())
+                    json.dump(dict(supp_full=supp_full.tolist(), supp_half=supp_half.tolist(), pat=pat.cpu().tolist()), patF, indent=2)
         logging.info(f"Pattern saved to {file_pat}")
 
     logging.info("Finished.")
 
 
 if __name__ == '__main__':
-    main()
+    argument = "-o output --nbr_pattern 100 --min_size 2 --max_size 500 --nbr_of_feature 100000 --split 50 " \
+               "--no_intersections --nbr_of_rows 10000"  # --categories_off"
+    main(argument.split())
