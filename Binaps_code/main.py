@@ -134,6 +134,4 @@ def main():
 
 
 if __name__ == '__main__':
-    argument = "-o output --nbr_pattern 100 --min_size 2 --max_size 500 --nbr_of_feature 100000 --split 50 " \
-               "--no_intersections --nbr_of_rows 10000"  # --categories_off"
-    main(argument.split())
+    main()
