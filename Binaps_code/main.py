@@ -82,12 +82,12 @@ def main():
     parser.add_argument('--no_gpu', action='store_true', default=False,
                         help='Force to use only cpu')
     args = parser.parse_args()
-    now = datetime.datetime.today().isoformat(sep='T', timespec='seconds')
-
+    now =datetime.datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")
+    
     if not os.path.isdir(args.output_dir):
         os.makedirs(args.output_dir)
 
-    log_file = os.path.join(args.output_dir, os.path.basename(args.input[:-4]) + f"_{now}_")
+    log_file = os.path.join(args.output_dir, os.path.basename(args.input[:-4]).replace(':', '_') + f"_{now}_")
     set_logger(log_file)
 
     logging.debug(f"Args : {args}")
