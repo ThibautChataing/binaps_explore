@@ -1,6 +1,7 @@
 import logging
 import os
 import datetime
+from tracemalloc import start
 import tqdm
 import json
 import pandas as pd
@@ -21,7 +22,7 @@ def set_logger(file_name=None, log_level=logging.DEBUG):
     log.setLevel(level=logging.DEBUG)
 
     # create formatter and add it to the handlers
-    formatter = logging.Formatter('[%(levelname)s] %(module)s in %(funcName)s at %(lineno)dl : %(message)s')
+    formatter = logging.Formatter('[%(levelname)s] at %(lineno)dl : %(message)s')
 
     if file_name:
         # create file handler for logger.
@@ -83,6 +84,9 @@ def check_remaining_request():
         #i = input("Sleep or change IP ? 0/1")
         i = '0'
         if i == '0':
+            start_sleep = datetime.datetime.now()
+            end_sleep = start_sleep + datetime.timedelta(hours=1)
+            log.critical(f'Sleep from {start_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")} to {end_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")}')
             time.sleep(60*60+1)
         elif i == '1':
             check_remaining_request()
