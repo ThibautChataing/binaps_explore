@@ -87,12 +87,12 @@ def check_remaining_request():
             start_sleep = datetime.datetime.now()
             end_sleep = start_sleep + datetime.timedelta(hours=1)
             log.critical(f'Sleep from {start_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")} to {end_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")}')
-            time.sleep(60*60+1)
+            time.sleep(60*60 + 1)
         elif i == '1':
             check_remaining_request()
         else:
             pass
-    logging.critical('Waiting done, go again')
+        logging.critical('Waiting done, go again')
 
 def get_from_named_user(named_user):
     return (named_user.id, named_user.login)
