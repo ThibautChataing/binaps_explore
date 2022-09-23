@@ -22,7 +22,7 @@ def set_logger(file_name=None, log_level=logging.DEBUG):
     log.setLevel(level=logging.DEBUG)
 
     # create formatter and add it to the handlers
-    formatter = logging.Formatter('[%(levelname)s] at %(lineno)dl : %(message)s')
+    formatter = logging.Formatter('[%(levelname)s] (%(asctime)s) at %(lineno)dl : %(message)s')
 
     if file_name:
         # create file handler for logger.
