@@ -1,7 +1,6 @@
 import logging
 import os
 import datetime
-from unittest import skip
 import tqdm
 import json
 import pandas as pd
@@ -89,6 +88,7 @@ def check_remaining_request():
             check_remaining_request()
         else:
             pass
+    logging.critical('Waiting done, go again')
 
 def get_from_named_user(named_user):
     return (named_user.id, named_user.login)
