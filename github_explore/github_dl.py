@@ -150,8 +150,6 @@ def main():
     log = logging.getLogger('main')
     log.info("start")
 
-
-
     whole_repo = os.path.join(root, r'repos_name.txt')
     repo_missing_path =  os.path.join(root, r'repos_name_missing.txt')
     data_path =  os.path.join(root, r'github_scrap_data.json')
@@ -216,6 +214,7 @@ def main():
             log.info(f'{repo} done, saving it')
             df = pd.concat([df, ev.to_dataframe()])
             repo_name = repo.replace('\\', '_')
+            repo_name = repo_name.replace('/', '_')
             ev.to_dataframe().to_json(os.path.join(root, f'save_{repo_name}.json'))
 
     except Exception as e:
