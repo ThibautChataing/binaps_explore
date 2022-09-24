@@ -4,6 +4,7 @@ import datetime
 from tracemalloc import start
 import tqdm
 import json
+import argparse
 import pandas as pd
 import time
 from enum import Enum
@@ -74,11 +75,10 @@ class ReposStatus(Enum):
     DOING = 1
     DONE = 2
 
-def check_remaining_request():
+def check_remaining_request(g):
     log = logging.getLogger('main')
 
-    r = requests.get('https://api.github.com/users/octocat')
-    remaining = int(r.headers['X-RateLimit-Remaining'])
+    remaining = g.rate_limiting[0]
     if remaining < 4:
         log.critical(f'Time to sleep or change internet {remaining} requests')
         #i = input("Sleep or change IP ? 0/1")
@@ -89,7 +89,7 @@ def check_remaining_request():
             log.critical(f'Sleep from {start_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")} to {end_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")}')
             time.sleep(60*60 + 1)
         elif i == '1':
-            check_remaining_request()
+            check_remaining_request(g)
         else:
             pass
         log.critical('Waiting done, go again')
@@ -97,35 +97,35 @@ def check_remaining_request():
 def get_from_named_user(named_user):
     return (named_user.id, named_user.login)
 
-def get_event_from_pr(pr, repo):
-    check_remaining_request()
+def get_event_from_pr(pr, repo, g):
+    check_remaining_request(g)
     if pr.as_issue():
         typ = EventType.ISSUEPR.value
     else:
         typ = EventType.ONLYPR.value
     ev  = Event(repo=repo, id=pr.id, etype=typ)
 
-    check_remaining_request()
+    check_remaining_request(g)
     ev.participants.add(get_from_named_user(pr.user))
 
     assignes = tuple(get_from_named_user(user) for user in pr.assignees)
     if assignes:
         ev.participants.add(assignes)
 
-    check_remaining_request()
+    check_remaining_request(g)
     # comments
     if pr.comments:
         com = pr.get_comments()
         for c in com:
             ev.participants.add(get_from_named_user(c.user))
 
-    check_remaining_request()
+    check_remaining_request(g)
     if pr.review_comments:
         com = pr.get_review_comments()
         for c in com:
             ev.participants.add(get_from_named_user(c.user))
 
-    check_remaining_request()
+    check_remaining_request(g)
     com = pr.get_issue_comments()
     if com.totalCount:
         for c in com:
@@ -134,8 +134,23 @@ def get_event_from_pr(pr, repo):
     return ev
 
 
-def main(root):
+def main():
+    now = datetime.datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")
+    parser = argparse.ArgumentParser(description='github scrapping')
+    parser.add_argument('-o', '--output', required=True,
+                        help='output dir')
+    parser.add_argument('-t', '--token', required=False,
+                        help='token for github')
+
+    args = parser.parse_args()
+    root = args.output
+
+    log_file = os.path.join(root, fr'github_dl_{now}.log')
+    set_logger(log_file)
     log = logging.getLogger('main')
+    log.info("start")
+
+
 
     whole_repo = os.path.join(root, r'repos_name.txt')
     repo_missing_path =  os.path.join(root, r'repos_name_missing.txt')
@@ -152,21 +167,21 @@ def main(root):
         repos = fd.read()
     repos = repos.split(' ')
 
-    g = Github()  # init github conenction
+    g = Github(login_or_token=args.token)  # init github conenction
     try:
         for repo in tqdm.tqdm(repos,desc="Repos", leave=True, position=2):  # iterate over all repos
-            check_remaining_request()
+            check_remaining_request(g)
             log.info(f'Doing repo {repo}')
             rep = g.get_repo(repo)
 
-            check_remaining_request()
+            check_remaining_request(g)
             prs = rep.get_pulls(state='all')  # get all pr
             for pr in tqdm.tqdm(prs, desc="PR", leave=True, position=3):
-                check_remaining_request()
-                ev = get_event_from_pr(pr, repo)
+                check_remaining_request(g)
+                ev = get_event_from_pr(pr, repo, g)
                 df = pd.concat([df, ev.to_dataframe()])
 
-            check_remaining_request()
+            check_remaining_request(g)
             issues = rep.get_issues(state='all')
             for iss in tqdm.tqdm(issues,desc="Issue", leave=True, position=3):
                 ev  = Event(repo=repo, id=iss.id)
@@ -174,29 +189,29 @@ def main(root):
                 pr = iss.pull_request
                 if pr:
                     ev.etype = EventType.ISSUEPR.value
-                    check_remaining_request()
+                    check_remaining_request(g)
                     pr = iss.as_pull_request()
                     if pr.id in df.id:
                         continue
                     else:
-                        check_remaining_request()
-                        evpr = get_event_from_pr(pr, repo)
+                        check_remaining_request(g)
+                        evpr = get_event_from_pr(pr, repo, g)
                         ev.participants = evpr.participants
 
                 else:
                     ev.etype = EventType.ONLYISSUE.value
-                    check_remaining_request()
+                    check_remaining_request(g)
                     ev.participants.add(get_from_named_user(iss.user))
-                    check_remaining_request()
+                    check_remaining_request(g)
                     assignes = tuple(get_from_named_user(user) for user in iss.assignees)
                     if assignes:
                         ev.participants.add(assignes)
 
                     # comments
-                    check_remaining_request()
+                    check_remaining_request(g)
                     com = iss.get_comments()
                     for c in com:
-                        check_remaining_request()
+                        check_remaining_request(g)
                         ev.participants.add(get_from_named_user(c.user))
             log.info(f'{repo} done, saving it')
             df = pd.concat([df, ev.to_dataframe()])
@@ -213,15 +228,8 @@ def main(root):
                 fd.write(' '.join(repos_missing))
             df.reset_index(inplace=True, drop=True)
             df.to_json(data_path)
+    log.info("end")
             
 
 if __name__ == "__main__":
-    now = datetime.datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")
-    root = fr'C:\Users\Thibaut\Documents\These\code\binaps_explore\github_explore'
-    log_file = os.path.join(root, fr'github_dl_{now}.log')
-    set_logger(log_file)
-    log = logging.getLogger('main')
-    log.info("start")
-    main(root)
-    log.info("end")
-
+    main()
