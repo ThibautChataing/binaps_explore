@@ -201,7 +201,7 @@ def main(root):
             log.info(f'{repo} done, saving it')
             df = pd.concat([df, ev.to_dataframe()])
             repo_name = repo.replace('\\', '_')
-            ev.to_dataframe().to_json(os.path.join(root, f'save_{repo}.json'))
+            ev.to_dataframe().to_json(os.path.join(root, f'save_{repo_name}.json'))
 
     except Exception as e:
 
