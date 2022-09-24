@@ -52,7 +52,7 @@ class EventType(Enum):
     ISSUEPR = 2
 
 class Event:
-    repo : str
+    repo: str
     id: int
     etype: EventType
     participants: set
