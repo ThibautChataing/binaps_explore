@@ -19,6 +19,7 @@ def set_logger(file_name=None, log_level=logging.DEBUG):
         :param log_level:
     """
     log = logging.getLogger('main')
+    log.propagate = False
     log.setLevel(level=logging.DEBUG)
 
     # create formatter and add it to the handlers
@@ -78,7 +79,6 @@ def check_remaining_request():
 
     r = requests.get('https://api.github.com/users/octocat')
     remaining = int(r.headers['X-RateLimit-Remaining'])
-    log.debug(f"Still {remaining} requests")
     if remaining < 4:
         log.critical(f'Time to sleep or change internet {remaining} requests')
         #i = input("Sleep or change IP ? 0/1")
@@ -92,7 +92,7 @@ def check_remaining_request():
             check_remaining_request()
         else:
             pass
-        logging.critical('Waiting done, go again')
+        log.critical('Waiting done, go again')
 
 def get_from_named_user(named_user):
     return (named_user.id, named_user.login)
