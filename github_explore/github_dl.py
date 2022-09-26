@@ -170,8 +170,8 @@ def main():
     log.debug(f"{len(repos)} repos to do")
 
     g = Github(login_or_token=args.token)  # init github conenction
-    try:
-        for repo in tqdm.tqdm(repos,desc="Repos", leave=True, position=2):  # iterate over all repos
+    for repo in tqdm.tqdm(repos,desc="Repos", leave=True, position=2):  # iterate over all repos
+        try:
             log.info(f'Doing repo {repo}')
             check_remaining_request(g)
             rep = g.get_repo(repo)
@@ -224,24 +224,14 @@ def main():
             repo_name = repo_name.replace('/', '_')
             ev.to_dataframe().to_json(os.path.join(root, f'save_{repo_name}.json'))
 
-        df.reset_index(inplace=True, drop=True)        
-        df.to_json(data_path)
-        log.info("end")
-
-    except Exception as e:
-
+        except Exception as e:
             log.error(e)
-            repos_missing = set(repos) - set(df.repo.unique()) 
-            repos_missing.add(repo)
-            repos_missing = list(repos_missing)
-            repos_missing.sort()
-            log.info(f'saving repo todo and current data')
-            log.debug(f'{df.repo.nunique()} repos done over {len(repos)}, missing {len(repos_missing)}')
-            with open(repo_missing_path, 'w') as fd:
-                fd.write(' '.join(repos_missing))
-            df.reset_index(inplace=True, drop=True)
-            df.to_json(data_path)
-            log.info("end with error")
+            with open(repo_missing_path, 'a+') as fd:
+                fd.write(f'{repo} ')
+        
+    df.reset_index(inplace=True, drop=True)        
+    df.to_json(data_path)
+    log.info("end")
 
        
 
