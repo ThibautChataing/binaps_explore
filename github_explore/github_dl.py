@@ -157,21 +157,26 @@ def main():
     if os.path.isfile(repo_missing_path):
         repo_todo = repo_missing_path
         df = pd.read_json(data_path)
+        log.info('Process starting again from current repo_name_missing')
     else:
         repo_todo = whole_repo
         df = pd.DataFrame(columns=['repo', 'id', 'event_type', 'participants'])
+        log.info('starting from scratch')
     
     with open(repo_todo, 'r') as fd:
         repos = fd.read()
     repos = repos.split(' ')
+    repos.sort()
+    log.debug(f"{len(repos)} repos to do")
 
     g = Github(login_or_token=args.token)  # init github conenction
     try:
         for repo in tqdm.tqdm(repos,desc="Repos", leave=True, position=2):  # iterate over all repos
-            check_remaining_request(g)
             log.info(f'Doing repo {repo}')
+            check_remaining_request(g)
             rep = g.get_repo(repo)
 
+            log.debug('Take pull request')
             check_remaining_request(g)
             prs = rep.get_pulls(state='all')  # get all pr
             for pr in tqdm.tqdm(prs, desc="PR", leave=True, position=3):
@@ -179,6 +184,7 @@ def main():
                 ev = get_event_from_pr(pr, repo, g)
                 df = pd.concat([df, ev.to_dataframe()])
 
+            log.debug('Take issues')
             check_remaining_request(g)
             issues = rep.get_issues(state='all')
             for iss in tqdm.tqdm(issues,desc="Issue", leave=True, position=3):
@@ -211,23 +217,34 @@ def main():
                     for c in com:
                         check_remaining_request(g)
                         ev.participants.add(get_from_named_user(c.user))
+            
             log.info(f'{repo} done, saving it')
             df = pd.concat([df, ev.to_dataframe()])
             repo_name = repo.replace('\\', '_')
             repo_name = repo_name.replace('/', '_')
             ev.to_dataframe().to_json(os.path.join(root, f'save_{repo_name}.json'))
 
+        df.reset_index(inplace=True, drop=True)        
+        df.to_json(data_path)
+        log.info("end")
+
     except Exception as e:
 
             log.error(e)
             repos_missing = set(repos) - set(df.repo.unique()) 
             repos_missing.add(repo)
+            repos_missing = list(repos_missing)
+            repos_missing.sort()
             log.info(f'saving repo todo and current data')
+            log.debug(f'{df.repo.nunique()} repos done over {len(repos)}, missing {len(repos_missing)}')
             with open(repo_missing_path, 'w') as fd:
                 fd.write(' '.join(repos_missing))
             df.reset_index(inplace=True, drop=True)
             df.to_json(data_path)
-    log.info("end")
+            log.info("end with error")
+
+       
+
             
 
 if __name__ == "__main__":
