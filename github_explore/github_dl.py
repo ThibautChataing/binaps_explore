@@ -156,7 +156,11 @@ def main():
 
     if os.path.isfile(repo_missing_path):
         repo_todo = repo_missing_path
-        df = pd.read_json(data_path)
+        try:
+            df = pd.read_json(data_path)
+        except:
+            df = pd.DataFrame(columns=['repo', 'id', 'event_type', 'participants'])
+
         log.info('Process starting again from current repo_name_missing')
     else:
         repo_todo = whole_repo
