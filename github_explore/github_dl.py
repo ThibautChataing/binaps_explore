@@ -19,7 +19,7 @@ class TqdmStream(object):
 
     @classmethod
     def flush(_):
-        sys.sdout.flush()
+        sys.stdout.flush()
 
 def set_logger(file_name=None, log_level=logging.DEBUG):
     # create logger for prd_ci
@@ -194,7 +194,7 @@ def main():
             log.debug('Take pull request')
             check_remaining_request(g)
             prs = rep.get_pulls(state='all')  # get all pr
-            for pr in tqdm.tqdm(prs, desc="PR", leave=False, position=1):
+            for pr in tqdm.tqdm(prs, total=prs.totalCount, desc="PR", leave=False, position=1):
                 check_remaining_request(g)
                 ev = get_event_from_pr(pr, repo, g)
                 #df = pd.concat([df, ev.to_dataframe()])
@@ -202,7 +202,7 @@ def main():
             log.debug('Take issues')
             check_remaining_request(g)
             issues = rep.get_issues(state='all')
-            for iss in tqdm.tqdm(issues,desc="Issue", leave=False, position=1):
+            for iss in tqdm.tqdm(issues,desc="Issue", total=prs.totalCount, leave=False, position=1):
                 ev  = Event(repo=repo, id=iss.id)
 
                 pr = iss.pull_request
