@@ -157,7 +157,7 @@ def main():
     log_file = os.path.join(root, fr'github_dl_{now}.log')
     set_logger(log_file)
     log = logging.getLogger('main')
-    log.info("start")
+    log.critical("start")
 
     whole_repo = os.path.join(root, r'repos_name.txt')
     repo_missing_path =  os.path.join(root, r'repos_name_missing.txt')
@@ -185,7 +185,7 @@ def main():
     log.debug(f"{len(repos)} repos to do")
 
     g = Github(login_or_token=args.token)  # init github conenction
-    for repo in tqdm.tqdm(repos,desc="Repos", leave=True, position=2):  # iterate over all repos
+    for repo in tqdm.tqdm(repos,desc="Repos", leave=True, position=0):  # iterate over all repos
         try:
             log.info(f'Doing repo {repo}')
             check_remaining_request(g)
@@ -194,7 +194,7 @@ def main():
             log.debug('Take pull request')
             check_remaining_request(g)
             prs = rep.get_pulls(state='all')  # get all pr
-            for pr in tqdm.tqdm(prs, desc="PR", leave=True, position=3):
+            for pr in tqdm.tqdm(prs, desc="PR", leave=False, position=1):
                 check_remaining_request(g)
                 ev = get_event_from_pr(pr, repo, g)
                 #df = pd.concat([df, ev.to_dataframe()])
@@ -202,7 +202,7 @@ def main():
             log.debug('Take issues')
             check_remaining_request(g)
             issues = rep.get_issues(state='all')
-            for iss in tqdm.tqdm(issues,desc="Issue", leave=True, position=3):
+            for iss in tqdm.tqdm(issues,desc="Issue", leave=False, position=1):
                 ev  = Event(repo=repo, id=iss.id)
 
                 pr = iss.pull_request
