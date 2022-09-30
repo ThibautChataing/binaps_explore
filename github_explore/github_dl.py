@@ -172,6 +172,7 @@ def main():
         repos = fd.read()
     repos = repos.split(' ')
     repos.sort()
+    repos_missing = repos.copy()
     log.debug(f"{len(repos)} repos to do")
 
     g = Github(login_or_token=args.token)  # init github conenction
@@ -228,11 +229,12 @@ def main():
             repo_name = repo.replace('\\', '_')
             repo_name = repo_name.replace('/', '_')
             ev.to_dataframe().to_json(os.path.join(root, f'save_{repo_name}.json'))
+            repos_missing.pop(0)
 
         except Exception as e:
             log.error(e)
             with open(repo_missing_path, 'a+') as fd:
-                fd.write(f'{repo} ')
+                fd.write(' '.join(repos_missing))
         
     #df.reset_index(inplace=True, drop=True)        
     #df.to_json(data_path)
