@@ -159,12 +159,13 @@ def main():
         try:
             df = pd.read_json(data_path)
         except:
-            df = pd.DataFrame(columns=['repo', 'id', 'event_type', 'participants'])
+            pass
+            #df = pd.DataFrame(columns=['repo', 'id', 'event_type', 'participants'])
 
         log.info('Process starting again from current repo_name_missing')
     else:
         repo_todo = whole_repo
-        df = pd.DataFrame(columns=['repo', 'id', 'event_type', 'participants'])
+        #df = pd.DataFrame(columns=['repo', 'id', 'event_type', 'participants'])
         log.info('starting from scratch')
     
     with open(repo_todo, 'r') as fd:
@@ -186,7 +187,7 @@ def main():
             for pr in tqdm.tqdm(prs, desc="PR", leave=True, position=3):
                 check_remaining_request(g)
                 ev = get_event_from_pr(pr, repo, g)
-                df = pd.concat([df, ev.to_dataframe()])
+                #df = pd.concat([df, ev.to_dataframe()])
 
             log.debug('Take issues')
             check_remaining_request(g)
@@ -223,7 +224,7 @@ def main():
                         ev.participants.add(get_from_named_user(c.user))
             
             log.info(f'{repo} done, saving it')
-            df = pd.concat([df, ev.to_dataframe()])
+            #df = pd.concat([df, ev.to_dataframe()])
             repo_name = repo.replace('\\', '_')
             repo_name = repo_name.replace('/', '_')
             ev.to_dataframe().to_json(os.path.join(root, f'save_{repo_name}.json'))
@@ -233,8 +234,8 @@ def main():
             with open(repo_missing_path, 'a+') as fd:
                 fd.write(f'{repo} ')
         
-    df.reset_index(inplace=True, drop=True)        
-    df.to_json(data_path)
+    #df.reset_index(inplace=True, drop=True)        
+    #df.to_json(data_path)
     log.info("end")
 
        
