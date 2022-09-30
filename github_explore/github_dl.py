@@ -8,9 +8,18 @@ import argparse
 import pandas as pd
 import time
 from enum import Enum
-import requests
+import sys
 
 from github import Github
+
+class TqdmStream(object):
+    @classmethod
+    def write(_, msg):
+        tqdm.tqdm.write(msg, end='')
+
+    @classmethod
+    def flush(_):
+        sys.sdout.flush()
 
 def set_logger(file_name=None, log_level=logging.DEBUG):
     # create logger for prd_ci
@@ -32,7 +41,7 @@ def set_logger(file_name=None, log_level=logging.DEBUG):
         fh.setLevel(level=logging.DEBUG)
         fh.setFormatter(formatter)
     # reate console handler for logger.
-    ch = logging.StreamHandler()
+    ch = logging.StreamHandler(TqdmStream)
     ch.setLevel(level=logging.ERROR)
     ch.setFormatter(formatter)
 
@@ -156,10 +165,10 @@ def main():
 
     if os.path.isfile(repo_missing_path):
         repo_todo = repo_missing_path
-        try:
-            df = pd.read_json(data_path)
-        except:
-            pass
+        #try:
+            #df = pd.read_json(data_path)
+        #except:
+            #pass
             #df = pd.DataFrame(columns=['repo', 'id', 'event_type', 'participants'])
 
         log.info('Process starting again from current repo_name_missing')
@@ -201,7 +210,7 @@ def main():
                     ev.etype = EventType.ISSUEPR.value
                     check_remaining_request(g)
                     pr = iss.as_pull_request()
-                    if pr.id in df.id:
+                    if pr.id in ev.id:
                         continue
                     else:
                         check_remaining_request(g)
