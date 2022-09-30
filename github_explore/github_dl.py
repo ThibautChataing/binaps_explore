@@ -163,19 +163,19 @@ def main():
     repo_missing_path =  os.path.join(root, r'repos_name_missing.txt')
     data_path =  os.path.join(root, r'github_scrap_data.json')
 
-    if os.path.isfile(repo_missing_path):
-        repo_todo = repo_missing_path
+    #if os.path.isfile(repo_missing_path):
+    #    repo_todo = repo_missing_path
         #try:
             #df = pd.read_json(data_path)
         #except:
             #pass
             #df = pd.DataFrame(columns=['repo', 'id', 'event_type', 'participants'])
 
-        log.info('Process starting again from current repo_name_missing')
-    else:
-        repo_todo = whole_repo
+        #log.info('Process starting again from current repo_name_missing')
+    #else:
+    repo_todo = whole_repo
         #df = pd.DataFrame(columns=['repo', 'id', 'event_type', 'participants'])
-        log.info('starting from scratch')
+    log.info('starting from scratch')
     
     with open(repo_todo, 'r') as fd:
         repos = fd.read()
