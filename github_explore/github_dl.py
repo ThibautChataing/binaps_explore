@@ -191,14 +191,25 @@ def main():
             check_remaining_request(g)
             rep = g.get_repo(repo)
 
+        except Exception as e:
+            log.error(e)
+            with open(repo_missing_path, 'a+') as fd:
+                fd.write(f"{repo}, get_repo")
+            continue
+
+        try:
             log.debug('Take pull request')
             check_remaining_request(g)
             prs = rep.get_pulls(state='all')  # get all pr
             for pr in tqdm.tqdm(prs, total=prs.totalCount, desc="PR", leave=False, position=1):
                 check_remaining_request(g)
                 ev = get_event_from_pr(pr, repo, g)
-                #df = pd.concat([df, ev.to_dataframe()])
+        except Exception as e:
+            log.error(e)
+            with open(repo_missing_path, 'a+') as fd:
+                fd.write(f"{repo}, pr")
 
+        try:
             log.debug('Take issues')
             check_remaining_request(g)
             issues = rep.get_issues(state='all')
@@ -232,26 +243,23 @@ def main():
                     for c in com:
                         check_remaining_request(g)
                         ev.participants.add(get_from_named_user(c.user))
-            
-            log.info(f'{repo} done, saving it')
-            #df = pd.concat([df, ev.to_dataframe()])
-            repo_name = repo.replace('\\', '_')
-            repo_name = repo_name.replace('/', '_')
-            ev.to_dataframe().to_json(os.path.join(root, f'save_{repo_name}.json'))
-            repos_missing.pop(0)
-
         except Exception as e:
             log.error(e)
             with open(repo_missing_path, 'a+') as fd:
-                fd.write(' '.join(repos_missing))
-        
-    #df.reset_index(inplace=True, drop=True)        
-    #df.to_json(data_path)
+                fd.write(f"{repo}, issue")
+
+        try:
+            log.info(f'{repo} done, saving it')
+            repo_name = repo.replace('\\', '_')
+            repo_name = repo_name.replace('/', '_')
+            ev.to_dataframe().to_json(os.path.join(root, f'save_{repo_name}.json'))
+        except Exception as e:
+            log.error(e)
+            with open(repo_missing_path, 'a+') as fd:
+                fd.write(f"{repo}, saving")
+
     log.info("end")
 
        
-
-            
-
 if __name__ == "__main__":
     main()

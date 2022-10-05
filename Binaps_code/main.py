@@ -48,7 +48,7 @@ def set_logger(file_name=None):
     log.addHandler(ch)
 
 
-def main():
+def main(argu=None):
     # Training settings
     parser = argparse.ArgumentParser(description='Binary Pattern Network implementation')
     parser.add_argument('-i','--input', required=True,
@@ -81,7 +81,7 @@ def main():
                         help='number of threads to use (default: 16)')
     parser.add_argument('--no_gpu', action='store_true', default=False,
                         help='Force to use only cpu')
-    args = parser.parse_args()
+    args = parser.parse_args(argu)
     now =datetime.datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")
     
     if not os.path.isdir(args.output_dir):
@@ -126,12 +126,20 @@ def main():
 
                     # compte du numbre de ligne dans lesquelles on trouve au moins la moitié du pattern
                     supp_half = (train_data.matmul(hn.cpu()) >= hn.sum().cpu() / 2).sum().cpu().numpy()
-                    #logging.info(f"{pat.cpu().numpy()}, ({supp_full}/{supp_half})")
-                    json.dump(dict(supp_full=supp_full.tolist(), supp_half=supp_half.tolist(), pat=pat.cpu().tolist()), patF, indent=2)
+                    
+                    # obtiens le support maximum
+                    supp_max = train_data.matmul(hn.cpu()).max().cpu().numpy()
+
+                    if supp_full > 0 or supp_half > 0:
+                        logging.info(f"({supp_full}/{supp_half}/{supp_max}), {pat.cpu().numpy()}")
+
+                    json.dump(dict(supp_full=supp_full.tolist(), supp_half=supp_half.tolist(), supp_max=supp_max.tolist(), pat=pat.cpu().tolist()), patF, indent=2)
         logging.info(f"Pattern saved to {file_pat}")
 
     logging.info("Finished.")
 
 
 if __name__ == '__main__':
-    main()
+    argument = r"-i C:\Users\Thibaut\Documents\These\code\binaps_contrastive\data\credit_card.dat -o ./output --epochs 20 --batch_size 1000 --test_batch_size 100"
+    #argument = r"-i C:\Users\Thibaut\Documents\These\code\binaps_explore\Data\accidents.dat -o ./output --epochs 20 --batch_size 1000 --test_batch_size 100"
+    main(argument.split())
