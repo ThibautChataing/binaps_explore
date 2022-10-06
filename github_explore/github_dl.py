@@ -9,6 +9,7 @@ import pandas as pd
 import time
 from enum import Enum
 import sys
+import traceback
 
 from github import Github
 
@@ -94,7 +95,7 @@ def check_remaining_request(g):
             end_sleep = datetime.datetime.fromtimestamp(g.rate_limiting_resettime)
             start_sleep = datetime.datetime.now()
             log.critical(f'Sleep from {start_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")} to {end_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")}')
-            time.sleep(int((end_sleep - start_sleep).total_seconds()) + 1)
+            time.sleep(abs(int((end_sleep - start_sleep).total_seconds())) + 10)
         elif i == '1':
             check_remaining_request(g)
         else:
@@ -142,8 +143,8 @@ def get_event_from_pr(pr, repo, g):
 
 
 def error_log(log, err, sys_stack, repo_missing_path, repo, type):
-    trace = sys_stack[2].replace(r'\n', r'\t')
-    log.error(err, sys_stack[0], sys_stack[1], trace)
+    trace = sys_stack[2].tb_lineno
+    log.error(err, sys_stack[1], trace)
     with open(repo_missing_path, 'a+') as fd:
         fd.write(f"{repo}, {type}\n")
 
@@ -185,6 +186,7 @@ def main(cpr=None):
 
         #  Connect to repo
         try:
+            raise EOFError
             log.info(f'Doing repo {repo}')
             check_remaining_request(g)
             rep = g.get_repo(repo)
@@ -258,6 +260,6 @@ def main(cpr=None):
 
        
 if __name__ == "__main__":
-    #args = "-o .\output"
-    main() #args.split(' '))
+    args = "-o .\output"
+    main(args.split(' '))
 
