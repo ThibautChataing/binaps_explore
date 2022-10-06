@@ -202,7 +202,6 @@ def main(cpr=None):
                 check_remaining_request(g)
                 ev = get_event_from_pr(pr, repo, g)
                 df = pd.concat([df, ev.to_dataframe()], ignore_index=True)
-                break
         except Exception as err:
             error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'pr')
 
@@ -243,7 +242,6 @@ def main(cpr=None):
                         check_remaining_request(g)
                         ev.participants.add(get_from_named_user(c.user))
                     df = pd.concat([df, ev.to_dataframe()], ignore_index=True)
-                    break
         except Exception as err:
             error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'issue')
 
@@ -259,6 +257,6 @@ def main(cpr=None):
 
        
 if __name__ == "__main__":
-    args = "-o .\output"
-    main(args.split(' '))
+    #args = "-o .\output"
+    main() #args.split(' '))
 
