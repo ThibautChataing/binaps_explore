@@ -67,12 +67,12 @@ class Event:
     etype: EventType
     participants: set
 
-    def __init__(self, repo, id, nbr, etype=0, participants=set()) -> None:
+    def __init__(self, repo, id, nbr, etype=0) -> None:
         self.repo = repo
         self.id = id
         self.nbr = nbr
         self.etype = etype
-        self.participants = participants
+        self.participants = set()
 
     def to_dataframe(self):
         return pd.DataFrame({'repo': self.repo, 'id': self.id, 'nbr': self.nbr, 'event_type': self.etype, 'participants': list(self.participants)})
@@ -211,9 +211,10 @@ def main(cpr=None):
             check_remaining_request(g)
             issues = rep.get_issues(state='all')
             for iss in tqdm.tqdm(issues,desc="Issue", total=prs.totalCount, leave=False, position=1):
-                ev  = Event(repo=repo, id=iss.id, nbr=iss.number)
 
                 pr = iss.pull_request
+                ev = Event(repo=repo, id=iss.id, nbr=iss.number)
+
                 if pr:
                     ev.etype = EventType.ISSUEPR.value
                     check_remaining_request(g)
