@@ -63,26 +63,24 @@ class EventType(Enum):
 class Event:
     repo: str
     id: int
+    nbr: int
     etype: EventType
     participants: set
 
-    def __init__(self, repo, id, etype=0, participants=set()) -> None:
+    def __init__(self, repo, id, nbr, etype=0, participants=set()) -> None:
         self.repo = repo
         self.id = id
+        self.nbr = nbr
         self.etype = etype
         self.participants = participants
 
     def to_dataframe(self):
-        return pd.DataFrame({'repo': self.repo, 'id': self.id, 'event_type': self.etype, 'participants': list(self.participants)})
+        return pd.DataFrame({'repo': self.repo, 'id': self.id, 'nbr': self.nbr, 'event_type': self.etype, 'participants': list(self.participants)})
 
     def to_list(self):
-        return [self.repo, self.id, self.etype, self.participants]
+        return [self.repo, self.id, self.nbr, self.etype, self.participants]
 
 
-class ReposStatus(Enum):
-    NOT_STARTED = 0
-    DOING = 1
-    DONE = 2
 
 def check_remaining_request(g):
     log = logging.getLogger('main')
@@ -93,10 +91,10 @@ def check_remaining_request(g):
         #i = input("Sleep or change IP ? 0/1")
         i = '0'
         if i == '0':
+            end_sleep = datetime.datetime.fromtimestamp(g.rate_limiting_resettime)
             start_sleep = datetime.datetime.now()
-            end_sleep = start_sleep + datetime.timedelta(hours=1)
             log.critical(f'Sleep from {start_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")} to {end_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")}')
-            time.sleep(60*60 + 1)
+            time.sleep(int((end_sleep - start_sleep).total_seconds()) + 1)
         elif i == '1':
             check_remaining_request(g)
         else:
@@ -112,7 +110,7 @@ def get_event_from_pr(pr, repo, g):
         typ = EventType.ISSUEPR.value
     else:
         typ = EventType.ONLYPR.value
-    ev  = Event(repo=repo, id=pr.id, etype=typ)
+    ev  = Event(repo=repo, id=pr.id, nbr=pr.number, etype=typ)
 
     check_remaining_request(g)
     ev.participants.add(get_from_named_user(pr.user))
@@ -143,60 +141,59 @@ def get_event_from_pr(pr, repo, g):
     return ev
 
 
-def main():
+def error_log(log, err, sys_stack, repo_missing_path, repo, type):
+    trace = sys_stack[2].replace(r'\n', r'\t')
+    log.error(err, sys_stack[0], sys_stack[1], trace)
+    with open(repo_missing_path, 'a+') as fd:
+        fd.write(f"{repo}, {type}\n")
+
+def main(cpr=None):
     now = datetime.datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")
+
+    # Argument management
     parser = argparse.ArgumentParser(description='github scrapping')
     parser.add_argument('-o', '--output', required=True,
                         help='output dir')
     parser.add_argument('-t', '--token', required=False,
                         help='token for github')
 
-    args = parser.parse_args()
+    args = parser.parse_args(cpr)
     root = args.output
 
+    #  Logging managment
     log_file = os.path.join(root, fr'github_dl_{now}.log')
     set_logger(log_file)
     log = logging.getLogger('main')
     log.critical("start")
 
-    whole_repo = os.path.join(root, r'repos_name.txt')
+    #  Define path for input/output file
+    repo_todo = os.path.join(root, r'repos_name.txt')
     repo_missing_path =  os.path.join(root, r'repos_name_missing.txt')
-    data_path =  os.path.join(root, r'github_scrap_data.json')
 
-    #if os.path.isfile(repo_missing_path):
-    #    repo_todo = repo_missing_path
-        #try:
-            #df = pd.read_json(data_path)
-        #except:
-            #pass
-            #df = pd.DataFrame(columns=['repo', 'id', 'event_type', 'participants'])
-
-        #log.info('Process starting again from current repo_name_missing')
-    #else:
-    repo_todo = whole_repo
-        #df = pd.DataFrame(columns=['repo', 'id', 'event_type', 'participants'])
-    log.info('starting from scratch')
-    
+    #  Load github repo name to reach for data
+    log.info(f'starting from {repo_todo}')
     with open(repo_todo, 'r') as fd:
         repos = fd.read()
     repos = repos.split(' ')
     repos.sort()
-    repos_missing = repos.copy()
     log.debug(f"{len(repos)} repos to do")
 
+    ### Main process
     g = Github(login_or_token=args.token)  # init github conenction
     for repo in tqdm.tqdm(repos,desc="Repos", leave=True, position=0):  # iterate over all repos
+        df = pd.DataFrame(columns=['repo', 'id', 'nbr', 'event_type', 'participants'])
+
+        #  Connect to repo
         try:
             log.info(f'Doing repo {repo}')
             check_remaining_request(g)
             rep = g.get_repo(repo)
 
-        except Exception as e:
-            log.error(e)
-            with open(repo_missing_path, 'a+') as fd:
-                fd.write(f"{repo}, get_repo")
+        except Exception as err:
+            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'get_repo')
             continue
 
+        # Get all PR from the repo
         try:
             log.debug('Take pull request')
             check_remaining_request(g)
@@ -204,29 +201,31 @@ def main():
             for pr in tqdm.tqdm(prs, total=prs.totalCount, desc="PR", leave=False, position=1):
                 check_remaining_request(g)
                 ev = get_event_from_pr(pr, repo, g)
-        except Exception as e:
-            log.error(e)
-            with open(repo_missing_path, 'a+') as fd:
-                fd.write(f"{repo}, pr")
+                df = pd.concat([df, ev.to_dataframe()], ignore_index=True)
+                break
+        except Exception as err:
+            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'pr')
 
+        # Get all issues from the repo
         try:
             log.debug('Take issues')
             check_remaining_request(g)
             issues = rep.get_issues(state='all')
             for iss in tqdm.tqdm(issues,desc="Issue", total=prs.totalCount, leave=False, position=1):
-                ev  = Event(repo=repo, id=iss.id)
+                ev  = Event(repo=repo, id=iss.id, nbr=iss.number)
 
                 pr = iss.pull_request
                 if pr:
                     ev.etype = EventType.ISSUEPR.value
                     check_remaining_request(g)
                     pr = iss.as_pull_request()
-                    if pr.id in ev.id:
+                    if pr.id in df.id:
                         continue
                     else:
                         check_remaining_request(g)
                         evpr = get_event_from_pr(pr, repo, g)
                         ev.participants = evpr.participants
+                    df = pd.concat([df, ev.to_dataframe()], ignore_index=True)
 
                 else:
                     ev.etype = EventType.ONLYISSUE.value
@@ -243,23 +242,23 @@ def main():
                     for c in com:
                         check_remaining_request(g)
                         ev.participants.add(get_from_named_user(c.user))
-        except Exception as e:
-            log.error(e)
-            with open(repo_missing_path, 'a+') as fd:
-                fd.write(f"{repo}, issue")
+                    df = pd.concat([df, ev.to_dataframe()], ignore_index=True)
+                    break
+        except Exception as err:
+            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'issue')
 
         try:
             log.info(f'{repo} done, saving it')
             repo_name = repo.replace('\\', '_')
             repo_name = repo_name.replace('/', '_')
-            ev.to_dataframe().to_json(os.path.join(root, f'save_{repo_name}.json'))
-        except Exception as e:
-            log.error(e)
-            with open(repo_missing_path, 'a+') as fd:
-                fd.write(f"{repo}, saving")
+            df.to_json(os.path.join(root, f'save_{repo_name}.json'))
+        except Exception as err:
+            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'saving')
 
     log.info("end")
 
        
 if __name__ == "__main__":
-    main()
+    args = "-o .\output"
+    main(args.split(' '))
+
