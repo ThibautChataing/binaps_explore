@@ -186,7 +186,6 @@ def main(cpr=None):
 
         #  Connect to repo
         try:
-            raise EOFError
             log.info(f'Doing repo {repo}')
             check_remaining_request(g)
             rep = g.get_repo(repo)
