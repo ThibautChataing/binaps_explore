@@ -260,6 +260,6 @@ def main(cpr=None):
 
        
 if __name__ == "__main__":
-    args = "-o .\output"
-    main(args.split(' '))
+    #args = "-o .\output"
+    main() #args.split(' '))
 
