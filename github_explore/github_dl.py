@@ -20,6 +20,7 @@ import time
 from enum import Enum
 import sys
 import traceback
+import sqlite3
 
 from github import Github
 
@@ -89,19 +90,30 @@ class Event:
     etype: EventType  # type of event (pr or issue)
     participants: set  # set of participant
 
-    def __init__(self, repo, id, nbr, etype=0) -> None:
+    def __init__(self, repo, id, nbr, etype=0, conn=None) -> None:
         self.repo = repo
         self.id = id
         self.nbr = nbr
         self.etype = etype
         self.participants = set()
+        self.__conn = conn
 
     def to_dataframe(self):
         return pd.DataFrame({'repo': self.repo, 'id': self.id, 'nbr': self.nbr, 'event_type': self.etype, 'participants': list(self.participants)})
 
+
     def to_list(self):
         return [self.repo, self.id, self.nbr, self.etype, self.participants]
 
+def init_db(name='OSCP.db'):
+    con = sqlite3.connect(name)
+    cur = con.cursor()
+    cur.execute(f"DROP TABLE IF EXISTS event ;")
+    #cur.execute(f"CREATE TABLE event({','.join(list(Event.__annotations__.keys()))});")
+    return con
+
+def save_event(event:Event, cur):
+    pass
 
 
 def check_remaining_request(g):
@@ -200,6 +212,8 @@ def main(cpr=None):
                         help='output dir')
     parser.add_argument('-t', '--token', required=False,
                         help='token for github')
+    parser.add_argument('-db', '--database', required=False, default='OSCP_data.db',
+                        help='token for github')
 
     args = parser.parse_args(cpr)
     root = args.output
@@ -222,11 +236,12 @@ def main(cpr=None):
     repos.sort()
     log.debug(f"{len(repos)} repos to do")
 
+    conn = init_db(args.database)
     ### Main process
     g = Github(login_or_token=args.token)  # init github conenction
     for repo in tqdm.tqdm(repos,desc="Repos", leave=True, position=0):  # iterate over all repos
         df = pd.DataFrame(columns=['repo', 'id', 'nbr', 'event_type', 'participants'])
-
+        ids = set()
         #  Connect to repo
         try:
             log.info(f'Doing repo {repo}')
@@ -242,10 +257,28 @@ def main(cpr=None):
             log.debug('Take pull request')
             check_remaining_request(g)
             prs = rep.get_pulls(state='all')  # get all pr
+            cpt = 99#0
             for pr in tqdm.tqdm(prs, total=prs.totalCount, desc="PR", leave=False, position=1):
                 check_remaining_request(g)
                 ev = get_event_from_pr(pr, repo, g)
                 df = pd.concat([df, ev.to_dataframe()], ignore_index=True)
+
+                #  checkpoint to save in sqlite
+                if cpt < 100:
+                    log.warning(f'Checkpoint save at pr for {repo}')
+                    df.participants = df.participants.astype('string')
+                    df.to_sql(name='event', con=conn, index=False, if_exists = 'append', dtype='string')
+                    ids.union(set(df.id.to_list()))
+                    df = df.iloc[0:0]
+                    cpt = 0
+                cpt += 1
+
+            ids.union(set(df.id.to_list()))
+            df.participants = df.participants.astype('string')
+            df.to_sql(name='event', con=conn, index=False, if_exists = 'append', dtype='string')
+            ids.union(set(df.id.to_list()))
+            df = df.iloc[0:0]
+
         except Exception as err:
             error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'pr')
 
@@ -254,6 +287,8 @@ def main(cpr=None):
             log.debug('Take issues')
             check_remaining_request(g)
             issues = rep.get_issues(state='all')
+
+            cpt = 99  #0
             for iss in tqdm.tqdm(issues,desc="Issue", total=prs.totalCount, leave=False, position=1):
 
                 pr = iss.pull_request
@@ -263,7 +298,7 @@ def main(cpr=None):
                     ev.etype = EventType.ISSUEPR.value
                     check_remaining_request(g)
                     pr = iss.as_pull_request()
-                    if pr.id in df.id:
+                    if pr.id in ids:
                         continue
                     else:
                         check_remaining_request(g)
@@ -287,21 +322,27 @@ def main(cpr=None):
                         check_remaining_request(g)
                         ev.participants.add(get_from_named_user(c.user))
                     df = pd.concat([df, ev.to_dataframe()], ignore_index=True)
+
+                if cpt > 100:
+                    log.warning(f'Checkpoint save for at issue {repo}')
+                    df.participants = df.participants.astype('string')
+                    df.to_sql(name='event', con=conn, index=False, if_exists = 'append')
+                    ids.union(set(df.id.to_list()))
+                    df = df.iloc[0:0]
+                    cpt = 0
+                cpt += 1
+
+            df.participants = df.participants.astype('string')
+            df.to_sql(name='event', con=conn, index=False, if_exists = 'append', dtype='string')
+            ids.union(set(df.id.to_list()))
+            df = df.iloc[0:0]
         except Exception as err:
             error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'issue')
-
-        try:
-            log.info(f'{repo} done, saving it')
-            repo_name = repo.replace('\\', '_')
-            repo_name = repo_name.replace('/', '_')
-            df.to_json(os.path.join(root, f'save_{repo_name}.json'))
-        except Exception as err:
-            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'saving')
 
     log.info("end")
 
        
 if __name__ == "__main__":
-    #args = "-o .\output"
-    main() #args.split(' '))
-
+    args = "-o .\output"
+    main(args.split(' '))
+    
