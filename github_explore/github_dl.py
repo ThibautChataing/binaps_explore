@@ -1,3 +1,13 @@
+"""
+Download event from github public repo.
+
+# Improvement :
+- get start_date and end_date for each event (by extension we can have duration)
+- get commit maker
+- get commit count
+- get comments count
+"""
+
 import logging
 import os
 import datetime
@@ -14,6 +24,9 @@ import traceback
 from github import Github
 
 class TqdmStream(object):
+    """
+    Streamer to properly display logging message during a tqdm display
+    """
     @classmethod
     def write(_, msg):
         tqdm.tqdm.write(msg, end='')
@@ -41,7 +54,7 @@ def set_logger(file_name=None, log_level=logging.DEBUG):
         fh = logging.FileHandler(file_name, mode='w+')
         fh.setLevel(level=logging.DEBUG)
         fh.setFormatter(formatter)
-    # reate console handler for logger.
+    # create console handler for logger.
     ch = logging.StreamHandler(TqdmStream)
     ch.setLevel(level=logging.ERROR)
     ch.setFormatter(formatter)
@@ -57,16 +70,24 @@ def set_logger(file_name=None, log_level=logging.DEBUG):
     return log
 
 class EventType(Enum):
+    """
+    Define event type in github repo
+    TIPS : ONLYPR doesn't seems to exist. Maybe by design a PR is linked to an issue (the comment part)
+    """
     ONLYISSUE = 0
     ONLYPR = 1
     ISSUEPR = 2
 
 class Event:
-    repo: str
-    id: int
-    nbr: int
-    etype: EventType
-    participants: set
+    """
+    Event object, as a pull request or an issue. It will hold all participants to this event (owner, assignes, comments)
+    TODO: What about commits ?
+    """
+    repo: str  # repo name
+    id: int  # unique id
+    nbr: int  # PR/issue number to link to the website
+    etype: EventType  # type of event (pr or issue)
+    participants: set  # set of participant
 
     def __init__(self, repo, id, nbr, etype=0) -> None:
         self.repo = repo
@@ -84,29 +105,44 @@ class Event:
 
 
 def check_remaining_request(g):
+    """
+    Github API only authorize 60 request for non authenticated user and 5000 for one.
+    This method check the remaining request and if the limit is reached. The process will sleep until it can
+    make new request
+    """
     log = logging.getLogger('main')
 
     remaining = g.rate_limiting[0]
-    if remaining < 4:
+    # TODO improvement: encapsulate Github class with this method to check each time a request is made and sleep if it's needed
+    if remaining < 4:  # a little margin is taken because we are not sure to check each time a request if done
         log.critical(f'Time to sleep or change internet {remaining} requests')
-        #i = input("Sleep or change IP ? 0/1")
-        i = '0'
-        if i == '0':
+        #i = input("Sleep or change IP ? 0/1")  # for debug
+        i = '0'  # for debug
+        if i == '0':  # for debug
             end_sleep = datetime.datetime.fromtimestamp(g.rate_limiting_resettime)
             start_sleep = datetime.datetime.now()
             log.critical(f'Sleep from {start_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")} to {end_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")}')
             time.sleep(abs(int((end_sleep - start_sleep).total_seconds())) + 10)
-        elif i == '1':
+        elif i == '1':  #  for debug
             check_remaining_request(g)
         else:
             pass
         log.critical('Waiting done, go again')
 
 def get_from_named_user(named_user):
+    """
+    Extract user login and id from User class
+    """
     return (named_user.id, named_user.login)
 
 def get_event_from_pr(pr, repo, g):
+    """
+    Explore a PullRequest to find all contributor
+    # TODO what about commits ?
+    """
     check_remaining_request(g)
+
+    # Find event type
     if pr.as_issue():
         typ = EventType.ISSUEPR.value
     else:
@@ -118,7 +154,11 @@ def get_event_from_pr(pr, repo, g):
 
     assignes = tuple(get_from_named_user(user) for user in pr.assignees)
     if assignes:
-        ev.participants.add(assignes)
+        if type(assignes) == list:
+            for a in assignes:
+                ev.participants.add(a)
+        else:
+            ev.participants.add(assignes)
 
     check_remaining_request(g)
     # comments
@@ -143,6 +183,9 @@ def get_event_from_pr(pr, repo, g):
 
 
 def error_log(log, err, sys_stack, repo_missing_path, repo, type):
+    """
+    Log error with stack trace
+    """
     trace = sys_stack[2].tb_lineno
     log.error(err, sys_stack[1], trace)
     with open(repo_missing_path, 'a+') as fd:
