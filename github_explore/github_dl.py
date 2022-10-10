@@ -148,7 +148,7 @@ def get_event_from_pr(pr, repo, g):
     # TODO what about commits ?
     """
     check_remaining_request(g)
-
+    log = logging.getLogger('main')
     # Find event type
     if pr.as_issue():
         typ = EventType.ISSUEPR.value
@@ -172,26 +172,41 @@ def get_event_from_pr(pr, repo, g):
     if pr.comments:
         com = pr.get_comments()
         for c in com:
-            ev.participants.add(get_from_named_user(c.user))
+            if c:
+                ev.participants.add(get_from_named_user(c.user))
+            else:
+                logging.error(f"contributor missing in comments")
 
     check_remaining_request(g)
     if pr.review_comments:
         com = pr.get_review_comments()
         for c in com:
-            ev.participants.add(get_from_named_user(c.user))
+            if c:
+                ev.participants.add(get_from_named_user(c.user))
+            else:
+                logging.error(f"contributor missing in review_comment")
 
     check_remaining_request(g)
     com = pr.get_issue_comments()
     if com.totalCount:
         for c in com:
-            ev.participants.add(get_from_named_user(c.user))
+            if c:
+                ev.participants.add(get_from_named_user(c.user))
+            else:
+                logging.error(f"contributor missing in issue comment")
 
     # commits
     check_remaining_request(g)
     if pr.commits:
         commits = pr.get_commits()
         for c in commits:
-            ev.participants.add(get_from_named_user(c.author))
+            if c.author:
+                ev.participants.add(get_from_named_user(c.author))
+            elif c.commit.author:
+                ev.participants.add((-1, c.commit.author.name))
+
+            else:
+                logging.error(f"contributor missing in commit")
 
     return ev
 
@@ -218,7 +233,7 @@ def error_log(log, err, sys_stack, repo_missing_path, repo, type):
     Log error with stack trace
     """
     log = logging.getLogger('main')
-    log.critical(err, sys_stack)
+    log.critical(err, sys_stack[1])
     with open(repo_missing_path, 'a+') as fd:
         fd.write(f"{repo}, {type}\n")
 
@@ -300,6 +315,7 @@ def main(cpr=None):
             df = df.iloc[0:0]
 
         except Exception as err:
+            log.error('PR')
             error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'pr')
 
         # Get all issues from the repo
@@ -349,6 +365,11 @@ def main(cpr=None):
                     cpt = 0
                 cpt += 1
             
+        except Exception as err:
+            log.error('ISSUE')
+            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'issue')
+
+        try:    
             log.debug(f"Saving {repo}")
             df, ids = checkpoint(df, repo, conn, ids, 'end')
 
@@ -359,9 +380,11 @@ def main(cpr=None):
             conn.commit()
             cursor.close()
             log.debug(f"{repo} finished")
-
+        
         except Exception as err:
-            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'issue')
+            log.error('END')
+            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'end')
+
 
     log.info("end")
 
