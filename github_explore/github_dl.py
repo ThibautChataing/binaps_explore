@@ -252,6 +252,7 @@ def main(cpr=None):
     cursor = conn.cursor()
     query = f"SELECT name FROM repo WHERE token_id = {args.run_id} AND done = {0}"
     repos = [ret[0] for ret in cursor.execute(query).fetchall()]
+    cursor.close()
 
     #  Define path for input/output file
     repo_missing_path =  os.path.join(root, r'repos_name_missing.txt')
@@ -351,8 +352,10 @@ def main(cpr=None):
 
             query = f"UPDATE repo SET done = {True} WHERE name = \"{repo}\""
             log.debug(f"Query update : {query}")
+            cursor = conn.cursor()
             cursor.execute(query)
             conn.commit()
+            cursor.close()
             log.debug(f"{repo} finished")
 
         except Exception as err:
