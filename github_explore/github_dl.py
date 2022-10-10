@@ -218,8 +218,7 @@ def error_log(log, err, sys_stack, repo_missing_path, repo, type):
     Log error with stack trace
     """
     log = logging.getLogger('main')
-    trace = sys_stack[2].tb_lineno
-    log.critical(err, sys_stack[1], trace)
+    log.critical(err, sys_stack)
     with open(repo_missing_path, 'a+') as fd:
         fd.write(f"{repo}, {type}\n")
 
