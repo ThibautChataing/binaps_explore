@@ -350,7 +350,7 @@ def main(cpr=None):
             log.debug(f"Saving {repo}")
             df, ids = checkpoint(df, repo, conn, ids, 'end')
 
-            query = f"UPDATE repo SET done = {True} WHERE name = \"{repo}\""
+            query = f"UPDATE repo SET done = {1} WHERE name = \"{repo}\""
             log.debug(f"Query update : {query}")
             cursor = conn.cursor()
             cursor.execute(query)
@@ -365,5 +365,5 @@ def main(cpr=None):
 
        
 if __name__ == "__main__":
-    #args = "-o .\output -r 0"
-    main() #args.split(' '))
+    args = "-o .\output -r 0 -t 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"
+    main(args.split(' '))
