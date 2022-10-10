@@ -217,8 +217,9 @@ def error_log(log, err, sys_stack, repo_missing_path, repo, type):
     """
     Log error with stack trace
     """
+    log = logging.getLogger('main')
     trace = sys_stack[2].tb_lineno
-    log.error(err, sys_stack[1], trace)
+    log.critical(err, sys_stack[1], trace)
     with open(repo_missing_path, 'a+') as fd:
         fd.write(f"{repo}, {type}\n")
 
@@ -280,6 +281,7 @@ def main(cpr=None):
             log.debug('Take pull request')
             check_remaining_request(g)
             prs = rep.get_pulls(state='all')  # get all pr
+            log.debug(f"{prs.totalCount} prs found")
             cpt = 0
             for pr in tqdm.tqdm(prs, total=prs.totalCount, desc="PR", leave=False, position=1):
                 check_remaining_request(g)
@@ -308,7 +310,8 @@ def main(cpr=None):
             issues = rep.get_issues(state='all')
 
             cpt = 0
-            for iss in tqdm.tqdm(issues,desc="Issue", total=prs.totalCount, leave=False, position=1):
+            log.debug(f"{issues.totalCount} issues found")
+            for iss in tqdm.tqdm(issues,desc="Issue", total=issues.totalCount, leave=False, position=1):
 
                 pr = iss.pull_request
                 ev = Event(repo=repo, id=iss.id, nbr=iss.number)
@@ -365,5 +368,5 @@ def main(cpr=None):
 
        
 if __name__ == "__main__":
-    #args = "-o .\output -r 0 -t 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"
+    #args = "-o .\output -r 0"
     main() #args.split(' '))
