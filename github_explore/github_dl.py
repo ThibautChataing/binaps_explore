@@ -250,7 +250,7 @@ def main(cpr=None):
 
     # Get list of repo
     cursor = conn.cursor()
-    query = f"SELECT name FROM repo WHERE token_id = {args.run_id} AND done = {False}"
+    query = f"SELECT name FROM repo WHERE token_id = {args.run_id} AND done = {0}"
     repos = [ret[0] for ret in cursor.execute(query).fetchall()]
 
     #  Define path for input/output file
