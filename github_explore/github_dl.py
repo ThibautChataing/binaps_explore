@@ -90,13 +90,12 @@ class Event:
     etype: EventType  # type of event (pr or issue)
     participants: set  # set of participant
 
-    def __init__(self, repo, id, nbr, etype=0, conn=None) -> None:
+    def __init__(self, repo, id, nbr, etype=0) -> None:
         self.repo = repo
         self.id = id
         self.nbr = nbr
         self.etype = etype
         self.participants = set()
-        self.__conn = conn
 
     def to_dataframe(self):
         return pd.DataFrame({'repo': self.repo, 'id': self.id, 'nbr': self.nbr, 'event_type': self.etype, 'participants': list(self.participants)})
@@ -105,15 +104,11 @@ class Event:
     def to_list(self):
         return [self.repo, self.id, self.nbr, self.etype, self.participants]
 
-def init_db(name='OSCP.db'):
+def init_db(name='OSCP_data.db'):
     con = sqlite3.connect(name)
-    cur = con.cursor()
-    cur.execute(f"DROP TABLE IF EXISTS event ;")
-    #cur.execute(f"CREATE TABLE event({','.join(list(Event.__annotations__.keys()))});")
+    #cur = con.cursor()
+    #cur.execute(f"DROP TABLE IF EXISTS event ;")
     return con
-
-def save_event(event:Event, cur):
-    pass
 
 
 def check_remaining_request(g):
@@ -128,18 +123,18 @@ def check_remaining_request(g):
     # TODO improvement: encapsulate Github class with this method to check each time a request is made and sleep if it's needed
     if remaining < 4:  # a little margin is taken because we are not sure to check each time a request if done
         log.critical(f'Time to sleep or change internet {remaining} requests')
-        #i = input("Sleep or change IP ? 0/1")  # for debug
-        i = '0'  # for debug
-        if i == '0':  # for debug
-            end_sleep = datetime.datetime.fromtimestamp(g.rate_limiting_resettime)
-            start_sleep = datetime.datetime.now()
-            log.critical(f'Sleep from {start_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")} to {end_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")}')
-            time.sleep(abs(int((end_sleep - start_sleep).total_seconds())) + 10)
-        elif i == '1':  #  for debug
-            check_remaining_request(g)
+        end_sleep = datetime.datetime.fromtimestamp(g.rate_limiting_resettime)
+        start_sleep = datetime.datetime.now()
+        log.critical(f'Sleep from {start_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")} to {end_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")}')
+        duration = int((end_sleep - start_sleep).total_seconds()) + 10
+        if duration < 0 :
+            logging.critical(f"Problem with duration {duration}")
+            time.sleep(360)
         else:
-            pass
+            time.sleep(duration)
+
         log.critical('Waiting done, go again')
+        check_remaining_request(g)
 
 def get_from_named_user(named_user):
     """
@@ -191,8 +186,32 @@ def get_event_from_pr(pr, repo, g):
         for c in com:
             ev.participants.add(get_from_named_user(c.user))
 
+    # commits
+    check_remaining_request(g)
+    if pr.commits:
+        commits = pr.get_commits()
+        for c in commits:
+            ev.participants.add(get_from_named_user(c.author))
+
     return ev
 
+def get_repo_todo(conn):
+    query = "SELECT"
+
+
+def checkpoint(df, repo, conn, ids, moment):
+    """
+    Checkpoint to save data in the DB because of raw overflow
+    """
+    log = logging.getLogger('main')
+
+    log.warning(f'Checkpoint save at {moment} for {repo}')
+    df.participants = df.participants.astype('string')
+    count = df.to_sql(name='event', con=conn, index=False, if_exists = 'append', dtype='string')
+    log.debug(f"{count} rows added to event")
+    ids.union(set(df.id.to_list()))
+    df = df.iloc[0:0]
+    return df, ids
 
 def error_log(log, err, sys_stack, repo_missing_path, repo, type):
     """
@@ -209,11 +228,13 @@ def main(cpr=None):
     # Argument management
     parser = argparse.ArgumentParser(description='github scrapping')
     parser.add_argument('-o', '--output', required=True,
-                        help='output dir')
+                        help='for output log')
     parser.add_argument('-t', '--token', required=False,
                         help='token for github')
+    parser.add_argument('-r', '--run_id', required=False,
+                        help='run_id for db')
     parser.add_argument('-db', '--database', required=False, default='OSCP_data.db',
-                        help='token for github')
+                        help='database for all data')
 
     args = parser.parse_args(cpr)
     root = args.output
@@ -224,19 +245,20 @@ def main(cpr=None):
     log = logging.getLogger('main')
     log.critical("start")
 
+    #  connect to db
+    conn = init_db(args.database)
+
+    # Get list of repo
+    cursor = conn.cursor()
+    query = f"SELECT name FROM repo WHERE token_id = {args.run_id} AND done = {False}"
+    repos = [ret[0] for ret in cursor.execute(query).fetchall()]
+
     #  Define path for input/output file
-    repo_todo = os.path.join(root, r'repos_name.txt')
     repo_missing_path =  os.path.join(root, r'repos_name_missing.txt')
 
     #  Load github repo name to reach for data
-    log.info(f'starting from {repo_todo}')
-    with open(repo_todo, 'r') as fd:
-        repos = fd.read()
-    repos = repos.split(' ')
-    repos.sort()
     log.debug(f"{len(repos)} repos to do")
 
-    conn = init_db(args.database)
     ### Main process
     g = Github(login_or_token=args.token)  # init github conenction
     for repo in tqdm.tqdm(repos,desc="Repos", leave=True, position=0):  # iterate over all repos
@@ -257,19 +279,15 @@ def main(cpr=None):
             log.debug('Take pull request')
             check_remaining_request(g)
             prs = rep.get_pulls(state='all')  # get all pr
-            cpt = 99#0
+            cpt = 0
             for pr in tqdm.tqdm(prs, total=prs.totalCount, desc="PR", leave=False, position=1):
                 check_remaining_request(g)
                 ev = get_event_from_pr(pr, repo, g)
                 df = pd.concat([df, ev.to_dataframe()], ignore_index=True)
 
                 #  checkpoint to save in sqlite
-                if cpt < 100:
-                    log.warning(f'Checkpoint save at pr for {repo}')
-                    df.participants = df.participants.astype('string')
-                    df.to_sql(name='event', con=conn, index=False, if_exists = 'append', dtype='string')
-                    ids.union(set(df.id.to_list()))
-                    df = df.iloc[0:0]
+                if cpt > 50:
+                    df, ids = checkpoint(df, repo, conn, ids, 'pr')
                     cpt = 0
                 cpt += 1
 
@@ -288,7 +306,7 @@ def main(cpr=None):
             check_remaining_request(g)
             issues = rep.get_issues(state='all')
 
-            cpt = 99  #0
+            cpt = 0
             for iss in tqdm.tqdm(issues,desc="Issue", total=prs.totalCount, leave=False, position=1):
 
                 pr = iss.pull_request
@@ -323,19 +341,20 @@ def main(cpr=None):
                         ev.participants.add(get_from_named_user(c.user))
                     df = pd.concat([df, ev.to_dataframe()], ignore_index=True)
 
-                if cpt > 100:
-                    log.warning(f'Checkpoint save for at issue {repo}')
-                    df.participants = df.participants.astype('string')
-                    df.to_sql(name='event', con=conn, index=False, if_exists = 'append')
-                    ids.union(set(df.id.to_list()))
-                    df = df.iloc[0:0]
+                if cpt > 50:
+                    df, ids = checkpoint(df, repo, conn, ids, 'issue')
                     cpt = 0
                 cpt += 1
+            
+            log.debug(f"Saving {repo}")
+            df, ids = checkpoint(df, repo, conn, ids, 'end')
 
-            df.participants = df.participants.astype('string')
-            df.to_sql(name='event', con=conn, index=False, if_exists = 'append', dtype='string')
-            ids.union(set(df.id.to_list()))
-            df = df.iloc[0:0]
+            query = f"UPDATE repo SET done = {True} WHERE name = \"{repo}\""
+            log.debug(f"Query update : {query}")
+            cursor.execute(query)
+            conn.commit()
+            log.debug(f"{repo} finished")
+            
         except Exception as err:
             error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'issue')
 
@@ -343,6 +362,5 @@ def main(cpr=None):
 
        
 if __name__ == "__main__":
-    args = "-o .\output"
+    args = "-o .\output -r 0"
     main(args.split(' '))
-    
