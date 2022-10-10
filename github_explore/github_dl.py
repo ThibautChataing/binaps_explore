@@ -354,7 +354,7 @@ def main(cpr=None):
             cursor.execute(query)
             conn.commit()
             log.debug(f"{repo} finished")
-            
+
         except Exception as err:
             error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'issue')
 
@@ -362,5 +362,5 @@ def main(cpr=None):
 
        
 if __name__ == "__main__":
-    args = "-o .\output -r 0"
-    main(args.split(' '))
+    #args = "-o .\output -r 0"
+    main() #args.split(' '))
