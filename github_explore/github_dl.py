@@ -365,5 +365,5 @@ def main(cpr=None):
 
        
 if __name__ == "__main__":
-    args = "-o .\output -r 0 -t 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"
-    main(args.split(' '))
+    #args = "-o .\output -r 0 -t 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"
+    main() #args.split(' '))
