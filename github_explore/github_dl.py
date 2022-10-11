@@ -245,10 +245,10 @@ def main(cpr=None):
     parser = argparse.ArgumentParser(description='github scrapping')
     parser.add_argument('-o', '--output', required=True,
                         help='for output log')
+    parser.add_argument('-r', '--run_id', required=True,
+                        help='run_id for db')
     parser.add_argument('-t', '--token', required=False,
                         help='token for github')
-    parser.add_argument('-r', '--run_id', required=False,
-                        help='run_id for db')
     parser.add_argument('-db', '--database', required=False, default='OSCP_data.db',
                         help='database for all data')
 
@@ -256,7 +256,7 @@ def main(cpr=None):
     root = args.output
 
     #  Logging managment
-    log_file = os.path.join(root, fr'github_dl_{now}.log')
+    log_file = os.path.join(root, fr'github_dl_id{args.run_id}_{now}.log')
     set_logger(log_file)
     log = logging.getLogger('main')
     log.critical("start")
