@@ -134,6 +134,7 @@ def check_remaining_request(g):
             time.sleep(duration)
 
         log.critical('Waiting done, go again')
+        g.get_rate_limit()
         check_remaining_request(g)
 
 def get_from_named_user(named_user):
@@ -175,7 +176,7 @@ def get_event_from_pr(pr, repo, g):
             if c:
                 ev.participants.add(get_from_named_user(c.user))
             else:
-                logging.error(f"contributor missing in comments")
+                logging.warning(f"contributor missing in comments")
 
     check_remaining_request(g)
     if pr.review_comments:
@@ -184,7 +185,7 @@ def get_event_from_pr(pr, repo, g):
             if c:
                 ev.participants.add(get_from_named_user(c.user))
             else:
-                logging.error(f"contributor missing in review_comment")
+                logging.warning(f"contributor missing in review_comment")
 
     check_remaining_request(g)
     com = pr.get_issue_comments()
@@ -193,7 +194,7 @@ def get_event_from_pr(pr, repo, g):
             if c:
                 ev.participants.add(get_from_named_user(c.user))
             else:
-                logging.error(f"contributor missing in issue comment")
+                logging.warning(f"contributor missing in issue comment")
 
     # commits
     check_remaining_request(g)
@@ -206,7 +207,7 @@ def get_event_from_pr(pr, repo, g):
                 ev.participants.add((-1, c.commit.author.name))
 
             else:
-                logging.error(f"contributor missing in commit")
+                logging.warning(f"contributor missing in commit")
 
     return ev
 
@@ -315,7 +316,7 @@ def main(cpr=None):
             df = df.iloc[0:0]
 
         except Exception as err:
-            log.error('PR')
+            log.critical('PR')
             error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'pr')
 
         # Get all issues from the repo
@@ -366,7 +367,7 @@ def main(cpr=None):
                 cpt += 1
             
         except Exception as err:
-            log.error('ISSUE')
+            log.critical('ISSUE')
             error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'issue')
 
         try:    
@@ -382,13 +383,13 @@ def main(cpr=None):
             log.debug(f"{repo} finished")
         
         except Exception as err:
-            log.error('END')
+            log.critical('END')
             error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'end')
 
-
+    conn.close()
     log.info("end")
 
        
 if __name__ == "__main__":
-    #args = "-o .\output -r 0"
+    args = "-o .\output -r 0"
     main() #args.split(' '))
