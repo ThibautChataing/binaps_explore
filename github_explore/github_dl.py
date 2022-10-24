@@ -12,6 +12,7 @@ import logging
 import os
 import datetime
 from tracemalloc import start
+from xml.dom.xmlbuilder import DOMEntityResolver
 import tqdm
 import json
 import argparse
@@ -19,7 +20,7 @@ import pandas as pd
 import time
 from enum import Enum
 import sys
-import traceback
+from collections.abc import Iterable
 import sqlite3
 
 from github import Github
@@ -79,6 +80,11 @@ class EventType(Enum):
     ONLYPR = 1
     ISSUEPR = 2
 
+class ContribType(Enum):
+    dev = 0
+    comment = 1
+
+
 class Event:
     """
     Event object, as a pull request or an issue. It will hold all participants to this event (owner, assignes, comments)
@@ -89,6 +95,7 @@ class Event:
     nbr: int  # PR/issue number to link to the website
     etype: EventType  # type of event (pr or issue)
     participants: set  # set of participant
+    contrib: ContribType
 
     def __init__(self, repo, id, nbr, etype=0) -> None:
         self.repo = repo
@@ -97,146 +104,306 @@ class Event:
         self.etype = etype
         self.participants = set()
 
+    def clean_for_savepoint(self):
+        self.participants = set()
+
+
+
     def to_dataframe(self):
-        return pd.DataFrame({'repo': self.repo, 'id': self.id, 'nbr': self.nbr, 'event_type': self.etype, 'participants': list(self.participants)})
+        p_id = []
+        p_login = []
+        p_name = []
+        p_mail = []
+        p_contrib = []
+        for p in self.participants:
+            p_id.append(p[0])
+            p_login.append(p[1])
+            p_name.append(p[2])
+            p_mail.append(p[3])
+            p_contrib.append(p[4])
+        df = pd.DataFrame({'repo': self.repo, 'id': self.id, 'nbr': self.nbr, 'event_type': self.etype, 'p_id': list(p_id), 'p_login': list(p_login), 'p_name': list(p_name), 'p_mail': list(p_mail), 'contrib_type': p_contrib})
+        df = df.infer_objects()
+        return df
 
 
-    def to_list(self):
-        return [self.repo, self.id, self.nbr, self.etype, self.participants]
+    def add_participants(self, participants, contrib_type):
+        if isinstance(participants, Iterable):
+            if isinstance(participants[0], Iterable):
+                for p in participants:
+                    self.participants.add((*p, contrib_type.value))
+            else:
+                self.participants.add((*participants, contrib_type.value))
+
 
 def init_db(name='OSCP_data.db'):
     con = sqlite3.connect(name)
-    #cur = con.cursor()
-    #cur.execute(f"DROP TABLE IF EXISTS event ;")
+    # cur = con.cursor()
+    # cur.execute(f"DROP TABLE IF EXISTS event ;")
+    # con.commit()
+    # cur.close()
     return con
 
 
-def check_remaining_request(g):
-    """
-    Github API only authorize 60 request for non authenticated user and 5000 for one.
-    This method check the remaining request and if the limit is reached. The process will sleep until it can
-    make new request
-    """
-    log = logging.getLogger('main')
+class CheckpointManager:
+    def __init__(self, conn) -> None:
+        self.conn = conn
+        self.event_ids = set()
 
-    remaining = g.rate_limiting[0]
-    # TODO improvement: encapsulate Github class with this method to check each time a request is made and sleep if it's needed
-    if remaining < 4:  # a little margin is taken because we are not sure to check each time a request if done
-        log.critical(f'Time to sleep or change internet {remaining} requests')
-        end_sleep = datetime.datetime.fromtimestamp(g.rate_limiting_resettime)
-        start_sleep = datetime.datetime.now()
-        log.critical(f'Sleep from {start_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")} to {end_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")}')
-        duration = int((end_sleep - start_sleep).total_seconds()) + 10
-        if duration < 0 :
-            logging.critical(f"Problem with duration {duration}")
-            time.sleep(360)
-        else:
-            time.sleep(duration)
+    def health_check(self, g, ev=None, moment='', force_save=False):
+        
+        log = logging.getLogger('main')
+        log.debug(f"Health check at {moment}")
+        if isinstance(ev, Event):
+            df = ev.to_dataframe()
+            if (len(df) > 100) or force_save:
+                df = self.date_checkpoint(df, moment)
+                ev.clean_for_savepoint()
 
-        log.critical('Waiting done, go again')
-        g.get_rate_limit()
-        check_remaining_request(g)
+        self.check_remaining_request(g)
+        return ev
+
+
+    def date_checkpoint(self, df, moment):
+        """
+        Checkpoint to save data in the DB because of raw overflow
+        """
+        log = logging.getLogger('main')
+
+        log.debug(f'Data checkpoint at {moment} for {df.repo.unique()}')
+        count = df.to_sql(name='event', con=self.conn, index=False, if_exists = 'append', dtype='string')
+        log.debug(f"{count} rows added to event")
+        self.event_ids.union(set(df.id.to_list()))
+        df = df.iloc[0:0]
+        return df
+
+    def check_remaining_request(self, g):
+        """
+        Github API only authorize 60 request for non authenticated user and 5000 for one.
+        This method check the remaining request and if the limit is reached. The process will sleep until it can
+        make new request
+        """
+        log = logging.getLogger('main')
+
+        remaining = g.rate_limiting[0]
+        # TODO improvement: encapsulate Github class with this method to check each time a request is made and sleep if it's needed
+        if remaining < 4:  # a little margin is taken because we are not sure to check each time a request if done
+            log.critical(f'Time to sleep or change internet {remaining} requests')
+            end_sleep = datetime.datetime.fromtimestamp(g.rate_limiting_resettime)
+            start_sleep = datetime.datetime.now()
+            log.critical(f'Sleep from {start_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")} to {end_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")}')
+            duration = int((end_sleep - start_sleep).total_seconds()) + 10
+            if duration < 0 :
+                logging.critical(f"Problem with duration {duration}")
+                time.sleep(360)
+            else:
+                time.sleep(duration)
+
+            log.critical('Waiting done, go again')
+            g.get_rate_limit()
+            self.check_remaining_request(g)
+
 
 def get_from_named_user(named_user):
     """
     Extract user login and id from User class
     """
-    return (named_user.id, named_user.login)
+    key = ['id', 'login', 'name', 'email']
+    ret = []
+    for k in key:
+        e = getattr(named_user, k, -1)
+        if e is None:
+            e = -1
+        ret.append(e)
+    return tuple(ret)
 
-def get_event_from_pr(pr, repo, g):
+def get_event_from_pr(pr, repo, g, health_check, based_ev=None):
     """
     Explore a PullRequest to find all contributor
     # TODO what about commits ?
     """
-    check_remaining_request(g)
+    health_check.health_check(g=g, moment='Get event from pr')
     log = logging.getLogger('main')
-    # Find event type
-    if pr.as_issue():
-        typ = EventType.ISSUEPR.value
+    if not based_ev:
+        # Find event type
+        if pr.as_issue():
+            typ = EventType.ISSUEPR.value
+        else:
+            typ = EventType.ONLYPR.value
+        ev  = Event(repo=repo, id=pr.id, nbr=pr.number, etype=typ)
     else:
-        typ = EventType.ONLYPR.value
-    ev  = Event(repo=repo, id=pr.id, nbr=pr.number, etype=typ)
+        ev = based_ev
 
-    check_remaining_request(g)
-    ev.participants.add(get_from_named_user(pr.user))
+    
+
+    health_check.health_check(g=g, moment='Get event from pr')
+
+    ev.add_participants(get_from_named_user(pr.user), contrib_type=ContribType.dev)
 
     assignes = tuple(get_from_named_user(user) for user in pr.assignees)
     if assignes:
-        if type(assignes) == list:
-            for a in assignes:
-                ev.participants.add(a)
-        else:
-            ev.participants.add(assignes)
+        ev.add_participants(assignes, contrib_type=ContribType.dev)
 
-    check_remaining_request(g)
+    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr')
     # comments
     if pr.comments:
         com = pr.get_comments()
         for c in com:
             if c:
-                ev.participants.add(get_from_named_user(c.user))
+                ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
             else:
                 logging.warning(f"contributor missing in comments")
 
-    check_remaining_request(g)
+    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr')
     if pr.review_comments:
         com = pr.get_review_comments()
         for c in com:
             if c:
-                ev.participants.add(get_from_named_user(c.user))
+                ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
             else:
                 logging.warning(f"contributor missing in review_comment")
 
-    check_remaining_request(g)
+    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr')
     com = pr.get_issue_comments()
     if com.totalCount:
         for c in com:
             if c:
-                ev.participants.add(get_from_named_user(c.user))
+                ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
             else:
                 logging.warning(f"contributor missing in issue comment")
 
     # commits
-    check_remaining_request(g)
+    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr')
     if pr.commits:
         commits = pr.get_commits()
         for c in commits:
             if c.author:
-                ev.participants.add(get_from_named_user(c.author))
+                ev.add_participants(get_from_named_user(c.author), contrib_type=ContribType.dev)
             elif c.commit.author:
-                ev.participants.add((-1, c.commit.author.name))
-
+                ev.add_participants(get_from_named_user(c.commit.author), contrib_type=ContribType.dev)
             else:
                 logging.warning(f"contributor missing in commit")
 
-    return ev
+    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr', force_save=True)
+    return health_check
 
-def get_repo_todo(conn):
-    query = "SELECT"
-
-
-def checkpoint(df, repo, conn, ids, moment):
-    """
-    Checkpoint to save data in the DB because of raw overflow
-    """
-    log = logging.getLogger('main')
-
-    log.warning(f'Checkpoint save at {moment} for {repo}')
-    df.participants = df.participants.astype('string')
-    count = df.to_sql(name='event', con=conn, index=False, if_exists = 'append', dtype='string')
-    log.debug(f"{count} rows added to event")
-    ids.union(set(df.id.to_list()))
-    df = df.iloc[0:0]
-    return df, ids
 
 def error_log(log, err, sys_stack, repo_missing_path, repo, type):
     """
     Log error with stack trace
     """
     log = logging.getLogger('main')
-    log.critical(err, sys_stack[1])
+    log.critical(f"{err} - {sys_stack[2].tb_lineno}")
     with open(repo_missing_path, 'a+') as fd:
         fd.write(f"{repo}, {type}\n")
+
+def get_todo_repos(conn, run_id):
+    limit = 1
+    log = logging.getLogger("__main__")
+    # Get list of repo
+    cursor = conn.cursor()
+    log.debug("choose repos")
+    q = f"UPDATE repo SET token_id={run_id} WHERE id IN (SELECT id FROM repo WHERE token_id=-1 LIMIT {limit})"
+    cursor.execute(q)
+    conn.commit()
+
+    query = f"SELECT name FROM repo WHERE token_id = {run_id} AND done = {0} LIMIT {limit}"
+    repos = [ret[0] for ret in cursor.execute(query).fetchall()]
+    cursor.close()
+    log.debug(f"find {len(repos)} to do")
+
+    return repos
+
+
+def get_data(repos, repo_missing_path, g, conn, health_check):
+    log = logging.getLogger("__main__")
+    for repo in tqdm.tqdm(repos,desc="Repos", leave=True, position=0):  # iterate over all repos
+        health_check.event_ids = set()
+
+        #  Connect to repo
+        try:
+            log.info(f'Doing repo {repo}')
+            health_check.health_check(g=g, moment='start_repo')
+            rep = g.get_repo(repo)
+
+        except Exception as err:
+            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'get_repo')
+            continue
+
+        # Get all PR from the repo
+        try:
+            log.debug('Take pull request')
+            health_check.health_check(g=g, moment='start PR')
+            prs = rep.get_pulls(state='all')  # get all pr
+            log.debug(f"{prs.totalCount} prs found")
+            for pr in tqdm.tqdm(prs, total=prs.totalCount, desc="PR", leave=False, position=1):
+                health_check = get_event_from_pr(pr=pr, repo=repo, g=g, health_check=health_check)
+                break
+
+
+        except Exception as err:
+            log.critical('PR')
+            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'pr')
+
+        # Get all issues from the repo
+        try:
+            log.debug('Take issues')
+            health_check.health_check(g=g, moment="Issue")
+            issues = rep.get_issues(state='all')
+
+            log.debug(f"{issues.totalCount} issues found")
+            for iss in tqdm.tqdm(issues,desc="Issue", total=issues.totalCount, leave=False, position=1):
+
+                pr = iss.pull_request
+                ev = Event(repo=repo, id=iss.id, nbr=iss.number)
+
+                if pr:
+                    ev.etype = EventType.ISSUEPR.value
+                    health_check.health_check(g=g, moment='pr in issue')
+                    pr = iss.as_pull_request()
+                    if pr.id in health_check.event_ids:
+                        continue
+                    else:
+                        health_check = get_event_from_pr(pr, repo, g, health_check=health_check, based_ev=ev)
+
+                else:
+                    ev.etype = EventType.ONLYISSUE.value
+
+                    health_check.health_check(g)
+                    ev.add_participants(get_from_named_user(iss.user), contrib_type=ContribType.comment)
+
+                    ev = health_check.health_check(g=g, ev=ev, moment='issue user')
+                    assignes = tuple(get_from_named_user(user) for user in iss.assignees)
+                    if assignes:
+                        ev.add_participants(assignes, contrib_type=ContribType.comment)
+
+                    # comments
+                    ev = health_check.health_check(g=g, ev=ev, moment='issue comment')
+                    com = iss.get_comments()
+                    for c in com:
+                        ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
+                        ev = health_check.health_check(g=g, ev=ev, moment='issue comment')
+                ev = health_check.health_check(g=g, ev=ev, moment='issue comment', force_save=True)
+                break
+                
+
+        except Exception as err:
+            log.critical('ISSUE')
+            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'issue')
+
+        try:    
+            log.debug(f"Saving {repo}")
+
+            query = f"UPDATE repo SET done = {1} WHERE name = \"{repo}\""
+            log.debug(f"Query update : {query}")
+            cursor = conn.cursor()
+            cursor.execute(query)
+            conn.commit()
+            cursor.close()
+            log.debug(f"{repo} finished")
+        
+        except Exception as err:
+            log.critical('END')
+            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'end')
 
 def main(cpr=None):
     now = datetime.datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")
@@ -264,132 +431,23 @@ def main(cpr=None):
     #  connect to db
     conn = init_db(args.database)
 
-    # Get list of repo
-    cursor = conn.cursor()
-    query = f"SELECT name FROM repo WHERE token_id = {args.run_id} AND done = {0}"
-    repos = [ret[0] for ret in cursor.execute(query).fetchall()]
-    cursor.close()
-
     #  Define path for input/output file
     repo_missing_path =  os.path.join(root, r'repos_name_missing.txt')
 
-    #  Load github repo name to reach for data
-    log.debug(f"{len(repos)} repos to do")
-
     ### Main process
+    health_check = CheckpointManager(conn=conn)
     g = Github(login_or_token=args.token)  # init github conenction
-    for repo in tqdm.tqdm(repos,desc="Repos", leave=True, position=0):  # iterate over all repos
-        df = pd.DataFrame(columns=['repo', 'id', 'nbr', 'event_type', 'participants'])
-        ids = set()
-        #  Connect to repo
-        try:
-            log.info(f'Doing repo {repo}')
-            check_remaining_request(g)
-            rep = g.get_repo(repo)
 
-        except Exception as err:
-            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'get_repo')
-            continue
-
-        # Get all PR from the repo
-        try:
-            log.debug('Take pull request')
-            check_remaining_request(g)
-            prs = rep.get_pulls(state='all')  # get all pr
-            log.debug(f"{prs.totalCount} prs found")
-            cpt = 0
-            for pr in tqdm.tqdm(prs, total=prs.totalCount, desc="PR", leave=False, position=1):
-                check_remaining_request(g)
-                ev = get_event_from_pr(pr, repo, g)
-                df = pd.concat([df, ev.to_dataframe()], ignore_index=True)
-
-                #  checkpoint to save in sqlite
-                if cpt > 50:
-                    df, ids = checkpoint(df, repo, conn, ids, 'pr')
-                    cpt = 0
-                cpt += 1
-
-            ids.union(set(df.id.to_list()))
-            df.participants = df.participants.astype('string')
-            df.to_sql(name='event', con=conn, index=False, if_exists = 'append', dtype='string')
-            ids.union(set(df.id.to_list()))
-            df = df.iloc[0:0]
-
-        except Exception as err:
-            log.critical('PR')
-            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'pr')
-
-        # Get all issues from the repo
-        try:
-            log.debug('Take issues')
-            check_remaining_request(g)
-            issues = rep.get_issues(state='all')
-
-            cpt = 0
-            log.debug(f"{issues.totalCount} issues found")
-            for iss in tqdm.tqdm(issues,desc="Issue", total=issues.totalCount, leave=False, position=1):
-
-                pr = iss.pull_request
-                ev = Event(repo=repo, id=iss.id, nbr=iss.number)
-
-                if pr:
-                    ev.etype = EventType.ISSUEPR.value
-                    check_remaining_request(g)
-                    pr = iss.as_pull_request()
-                    if pr.id in ids:
-                        continue
-                    else:
-                        check_remaining_request(g)
-                        evpr = get_event_from_pr(pr, repo, g)
-                        ev.participants = evpr.participants
-                    df = pd.concat([df, ev.to_dataframe()], ignore_index=True)
-
-                else:
-                    ev.etype = EventType.ONLYISSUE.value
-                    check_remaining_request(g)
-                    ev.participants.add(get_from_named_user(iss.user))
-                    check_remaining_request(g)
-                    assignes = tuple(get_from_named_user(user) for user in iss.assignees)
-                    if assignes:
-                        ev.participants.add(assignes)
-
-                    # comments
-                    check_remaining_request(g)
-                    com = iss.get_comments()
-                    for c in com:
-                        check_remaining_request(g)
-                        ev.participants.add(get_from_named_user(c.user))
-                    df = pd.concat([df, ev.to_dataframe()], ignore_index=True)
-
-                if cpt > 50:
-                    df, ids = checkpoint(df, repo, conn, ids, 'issue')
-                    cpt = 0
-                cpt += 1
-            
-        except Exception as err:
-            log.critical('ISSUE')
-            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'issue')
-
-        try:    
-            log.debug(f"Saving {repo}")
-            df, ids = checkpoint(df, repo, conn, ids, 'end')
-
-            query = f"UPDATE repo SET done = {1} WHERE name = \"{repo}\""
-            log.debug(f"Query update : {query}")
-            cursor = conn.cursor()
-            cursor.execute(query)
-            conn.commit()
-            cursor.close()
-            log.debug(f"{repo} finished")
-        
-        except Exception as err:
-            log.critical('END')
-            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'end')
+    repos = get_todo_repos(conn, run_id=args.run_id)
+    while len(repos) > 0:
+        get_data(repos=repos, repo_missing_path=repo_missing_path, g=g, conn=conn, health_check=health_check)
+        log.info(f"Batch of repos done, trying to take more")
+        repos = get_todo_repos(conn, run_id=args.run_id)
 
     conn.close()
     log.info("end")
 
        
 if __name__ == "__main__":
-    args = "-o .\output -r 0"
-    main() #args.split(' '))
+    args = r"-o .\output -r 0 -db C:\Users\Thibaut\Documents\These\code\OSCP_data.db"
+    main(args.split(' '))

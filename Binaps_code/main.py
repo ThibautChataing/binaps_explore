@@ -142,4 +142,16 @@ def main(argu=None):
 if __name__ == '__main__':
     argument = r"-i C:\Users\Thibaut\Documents\These\code\binaps_contrastive\data\credit_card.dat -o ./output --epochs 20 --batch_size 1000 --test_batch_size 100"
     #argument = r"-i C:\Users\Thibaut\Documents\These\code\binaps_explore\Data\accidents.dat -o ./output --epochs 20 --batch_size 1000 --test_batch_size 100"
-    main(argument.split())
+    
+    
+    exp = ['-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_only_setosa.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
+ '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_only_versicolor.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
+ '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_only_virginica.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
+ '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_set_ver.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
+ '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_set_vir.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
+ '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_setosa.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
+ '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_vir_ver.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
+ '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\credit_card.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 1000 --test_batch_size 100',
+ '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\synthetic_data_1000_1000_10_0.001_INTER_2022-08-29T16h20m33s.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 100 --test_batch_size 10']
+    for e in exp:
+        main(e.split())
