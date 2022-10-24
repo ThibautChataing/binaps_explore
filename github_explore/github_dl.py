@@ -298,7 +298,7 @@ def error_log(log, err, sys_stack, repo_missing_path, repo, type):
 
 def get_todo_repos(conn, run_id):
     limit = 1
-    log = logging.getLogger("__main__")
+    log = logging.getLogger("main")
     # Get list of repo
     cursor = conn.cursor()
     log.debug("choose repos")
@@ -315,7 +315,7 @@ def get_todo_repos(conn, run_id):
 
 
 def get_data(repos, repo_missing_path, g, conn, health_check):
-    log = logging.getLogger("__main__")
+    log = logging.getLogger("main")
     for repo in tqdm.tqdm(repos,desc="Repos", leave=True, position=0):  # iterate over all repos
         health_check.event_ids = set()
 
@@ -449,5 +449,5 @@ def main(cpr=None):
 
        
 if __name__ == "__main__":
-    args = r"-o .\output -r 0 -db C:\Users\Thibaut\Documents\These\code\OSCP_data.db"
-    main(args.split(' '))
+    #args = r"-o .\output -r 0 -db C:\Users\Thibaut\Documents\These\code\OSCP_data.db"
+    main() #args.split(' '))
