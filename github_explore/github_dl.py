@@ -297,7 +297,7 @@ def error_log(log, err, sys_stack, repo_missing_path, repo, type):
         fd.write(f"{repo}, {type}\n")
 
 def get_todo_repos(conn, run_id):
-    limit = 1
+    limit = 10
     log = logging.getLogger("main")
     # Get list of repo
     cursor = conn.cursor()
@@ -337,7 +337,6 @@ def get_data(repos, repo_missing_path, g, conn, health_check):
             log.debug(f"{prs.totalCount} prs found")
             for pr in tqdm.tqdm(prs, total=prs.totalCount, desc="PR", leave=False, position=1):
                 health_check = get_event_from_pr(pr=pr, repo=repo, g=g, health_check=health_check)
-                break
 
 
         except Exception as err:
@@ -383,7 +382,6 @@ def get_data(repos, repo_missing_path, g, conn, health_check):
                         ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
                         ev = health_check.health_check(g=g, ev=ev, moment='issue comment')
                 ev = health_check.health_check(g=g, ev=ev, moment='issue comment', force_save=True)
-                break
                 
 
         except Exception as err:
