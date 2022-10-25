@@ -152,7 +152,6 @@ class CheckpointManager:
     def health_check(self, g, ev=None, moment='', force_save=False):
         
         log = logging.getLogger('main')
-        log.debug(f"Health check at {moment}")
         if isinstance(ev, Event):
             df = ev.to_dataframe()
             if (len(df) > 100) or force_save:
@@ -292,7 +291,7 @@ def error_log(log, err, sys_stack, repo_missing_path, repo, type):
     Log error with stack trace
     """
     log = logging.getLogger('main')
-    log.critical(f"{err} - {sys_stack[2].tb_lineno}")
+    log.error(err, exc_info=True)
     with open(repo_missing_path, 'a+') as fd:
         fd.write(f"{repo}, {type}\n")
 
@@ -306,7 +305,7 @@ def get_todo_repos(conn, run_id):
     cursor.execute(q)
     conn.commit()
 
-    query = f"SELECT name FROM repo WHERE token_id = {run_id} AND done = {0} LIMIT {limit}"
+    query = f"SELECT name FROM repo WHERE token_id = {run_id} AND done = {0} LIMIT {2*limit}"
     repos = [ret[0] for ret in cursor.execute(query).fetchall()]
     cursor.close()
     log.debug(f"find {len(repos)} to do")
