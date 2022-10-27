@@ -348,7 +348,7 @@ def get_data(repos, repo_missing_path, g, conn, health_check):
 
         except Exception as err:
             log.critical('PR')
-            error_log(err=err, conn=conn, repô=repo, type='pr')
+            error_log(err=err, conn=conn, repo=repo, type='pr')
 
         # Get all issues from the repo
         try:
