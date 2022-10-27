@@ -215,7 +215,7 @@ def get_from_named_user(named_user):
         ret.append(e)
     return tuple(ret)
 
-def get_event_from_pr(pr, repo, g, health_check, based_ev=None):
+def get_event_from_pr(pr, repo, g, health_check, conn, based_ev=None):
     """
     Explore a PullRequest to find all contributor
     # TODO what about commits ?
@@ -236,51 +236,75 @@ def get_event_from_pr(pr, repo, g, health_check, based_ev=None):
 
     health_check.health_check(g=g, moment='Get event from pr before participant')
 
-    ev.add_participants(get_from_named_user(pr.user), contrib_type=ContribType.dev)
+    try:
+        ev.add_participants(get_from_named_user(pr.user), contrib_type=ContribType.dev)
+    except Exception as err:
+                    log.critical('PR get')
+                    error_log(err=err, conn=conn, repo=repo, type='pr')
 
-    assignes = tuple(get_from_named_user(user) for user in pr.assignees)
-    if assignes:
-        ev.add_participants(assignes, contrib_type=ContribType.dev)
+    try:
+        assignes = tuple(get_from_named_user(user) for user in pr.assignees)
+        if assignes:
+            ev.add_participants(assignes, contrib_type=ContribType.dev)
+    except Exception as err:
+        log.critical('PR get')
+        error_log(err=err, conn=conn, repo=repo, type='pr')
 
-    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before comment')
-    # comments
-    if pr.comments:
-        com = pr.get_comments()
-        for c in com:
-            if c:
-                ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
-            else:
-                log.warning(f"contributor missing in comments")
+    try:
+        ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before comment')
+        # comments
+        if pr.comments:
+            com = pr.get_comments()
+            for c in com:
+                if c:
+                    ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
+                else:
+                    log.warning(f"contributor missing in comments")
+    except Exception as err:
+        log.critical('PR get')
+        error_log(err=err, conn=conn, repo=repo, type='pr')
 
-    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before review comment')
-    if pr.review_comments:
-        com = pr.get_review_comments()
-        for c in com:
-            if c:
-                ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
-            else:
-                log.warning(f"contributor missing in review_comment")
+    try:
+        ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before review comment')
+        if pr.review_comments:
+            com = pr.get_review_comments()
+            for c in com:
+                if c:
+                    ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
+                else:
+                    log.warning(f"contributor missing in review_comment")
+    except Exception as err:
+        log.critical('PR get')
+        error_log(err=err, conn=conn, repo=repo, type='pr')
 
-    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before issue comment')
-    com = pr.get_issue_comments()
-    if com.totalCount:
-        for c in com:
-            if c:
-                ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
-            else:
-                log.warning(f"contributor missing in issue comment")
+    try:
+        ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before issue comment')
+        com = pr.get_issue_comments()
+        if com.totalCount:
+            for c in com:
+                if c:
+                    ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
+                else:
+                    log.warning(f"contributor missing in issue comment")
+    except Exception as err:
+        log.critical('PR get')
+        error_log(err=err, conn=conn, repo=repo, type='pr')
 
-    # commits
-    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before commits')
-    if pr.commits:
-        commits = pr.get_commits()
-        for c in commits:
-            if c.author:
-                ev.add_participants(get_from_named_user(c.author), contrib_type=ContribType.dev)
-            elif c.commit.author:
-                ev.add_participants(get_from_named_user(c.commit.author), contrib_type=ContribType.dev)
-            else:
-                log.warning(f"contributor missing in commit")
+    try:
+        # commits
+        ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before commits')
+        if pr.commits:
+            commits = pr.get_commits()
+            for c in commits:
+                if c.author:
+                    ev.add_participants(get_from_named_user(c.author), contrib_type=ContribType.dev)
+                elif c.commit.author:
+                    ev.add_participants(get_from_named_user(c.commit.author), contrib_type=ContribType.dev)
+                else:
+                    log.warning(f"contributor missing in commit")
+    except Exception as err:
+        log.critical('PR get')
+        error_log(err=err, conn=conn, repo=repo, type='pr')
 
     ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr', force_save=True)
     return health_check
@@ -337,63 +361,84 @@ def get_data(repos, repo_missing_path, g, conn, health_check):
             continue
 
         # Get all PR from the repo
+        
+        log.debug('Take pull request')
+        health_check.health_check(g=g, moment='start PR')
+
+        skip = 0
         try:
-            log.debug('Take pull request')
-            health_check.health_check(g=g, moment='start PR')
             prs = rep.get_pulls(state='all')  # get all pr
             log.debug(f"{prs.totalCount} prs found")
-            for pr in tqdm.tqdm(prs, total=prs.totalCount, desc="PR", leave=False, position=1):
-                health_check = get_event_from_pr(pr=pr, repo=repo, g=g, health_check=health_check)
-
 
         except Exception as err:
+            skip=1
             log.critical('PR')
             error_log(err=err, conn=conn, repo=repo, type='pr')
 
+        if not skip:
+            for pr in tqdm.tqdm(prs, total=prs.totalCount, desc="PR", leave=False, position=1):
+                health_check = get_event_from_pr(pr=pr, repo=repo, g=g, health_check=health_check, conn=conn)
+
+        skip=0
         # Get all issues from the repo
         try:
             log.debug('Take issues')
             health_check.health_check(g=g, moment="Issue")
             issues = rep.get_issues(state='all')
 
-            log.debug(f"{issues.totalCount} issues found")
-            for iss in tqdm.tqdm(issues,desc="Issue", total=issues.totalCount, leave=False, position=1):
+        except Exception as err:
+            log.critical('ISSUE')
+            error_log(err=err, conn=conn, repo=repo, type='issue')
+            continue
 
-                pr = iss.pull_request
-                ev = Event(repo=repo, id=iss.id, nbr=iss.number)
+        log.debug(f"{issues.totalCount} issues found")
+        for iss in tqdm.tqdm(issues,desc="Issue", total=issues.totalCount, leave=False, position=1):
 
-                if pr:
-                    ev.etype = EventType.ISSUEPR.value
-                    health_check.health_check(g=g, moment='pr in issue')
-                    pr = iss.as_pull_request()
-                    if pr.id in health_check.event_ids:
-                        continue
-                    else:
-                        health_check = get_event_from_pr(pr, repo, g, health_check=health_check, based_ev=ev)
+            pr = iss.pull_request
+            ev = Event(repo=repo, id=iss.id, nbr=iss.number)
 
+            if pr:
+                ev.etype = EventType.ISSUEPR.value
+                health_check.health_check(g=g, moment='pr in issue')
+                pr = iss.as_pull_request()
+                if pr.id in health_check.event_ids:
+                    continue
                 else:
-                    ev.etype = EventType.ONLYISSUE.value
+                    health_check = get_event_from_pr(pr, repo, g, health_check=health_check, conn=conn, based_ev=ev)
 
+            else:
+                ev.etype = EventType.ONLYISSUE.value
+
+                try:
                     health_check.health_check(g, moment='issue not pr')
                     ev.add_participants(get_from_named_user(iss.user), contrib_type=ContribType.comment)
+                except Exception as err:
+                    log.critical('ISSUE')
+                    error_log(err=err, conn=conn, repo=repo, type='issue')
 
+                try:
                     ev = health_check.health_check(g=g, ev=ev, moment='issue user')
                     assignes = tuple(get_from_named_user(user) for user in iss.assignees)
                     if assignes:
                         ev.add_participants(assignes, contrib_type=ContribType.comment)
+                except Exception as err:
+                    log.critical('ISSUE')
+                    error_log(err=err, conn=conn, repo=repo, type='issue')
 
+                try:    
                     # comments
                     ev = health_check.health_check(g=g, ev=ev, moment='issue comment')
                     com = iss.get_comments()
                     for c in com:
                         ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
                         ev = health_check.health_check(g=g, ev=ev, moment='issue comment')
-                ev = health_check.health_check(g=g, ev=ev, moment='issue comment', force_save=True)
+                except Exception as err:
+                    log.critical('ISSUE')
+                    error_log(err=err, conn=conn, repo=repo, type='issue')
+            ev = health_check.health_check(g=g, ev=ev, moment='issue comment', force_save=True)
                 
 
-        except Exception as err:
-            log.critical('ISSUE')
-            error_log(err=err, conn=conn, repo=repo, type='issue')
+
 
         try:    
             log.debug(f"Ending {repo}")
