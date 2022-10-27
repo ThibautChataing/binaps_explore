@@ -192,7 +192,7 @@ class CheckpointManager:
             log.critical(f'Sleep from {start_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")} to {end_sleep.strftime("%Y-%m-%dT%Hh%Mm%Ss")}')
             duration = int((end_sleep - start_sleep).total_seconds()) + 10
             if duration < 0 :
-                logging.critical(f"Problem with duration {duration}")
+                log.critical(f"Problem with duration {duration}")
                 time.sleep(360)
             else:
                 time.sleep(duration)
@@ -220,7 +220,7 @@ def get_event_from_pr(pr, repo, g, health_check, based_ev=None):
     Explore a PullRequest to find all contributor
     # TODO what about commits ?
     """
-    health_check.health_check(g=g, moment='Get event from pr')
+    health_check.health_check(g=g, moment='Get event from pr start')
     log = logging.getLogger('main')
     if not based_ev:
         # Find event type
@@ -234,7 +234,7 @@ def get_event_from_pr(pr, repo, g, health_check, based_ev=None):
 
     
 
-    health_check.health_check(g=g, moment='Get event from pr')
+    health_check.health_check(g=g, moment='Get event from pr before participant')
 
     ev.add_participants(get_from_named_user(pr.user), contrib_type=ContribType.dev)
 
@@ -242,7 +242,7 @@ def get_event_from_pr(pr, repo, g, health_check, based_ev=None):
     if assignes:
         ev.add_participants(assignes, contrib_type=ContribType.dev)
 
-    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr')
+    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before comment')
     # comments
     if pr.comments:
         com = pr.get_comments()
@@ -250,28 +250,28 @@ def get_event_from_pr(pr, repo, g, health_check, based_ev=None):
             if c:
                 ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
             else:
-                logging.warning(f"contributor missing in comments")
+                log.warning(f"contributor missing in comments")
 
-    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr')
+    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before review comment')
     if pr.review_comments:
         com = pr.get_review_comments()
         for c in com:
             if c:
                 ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
             else:
-                logging.warning(f"contributor missing in review_comment")
+                log.warning(f"contributor missing in review_comment")
 
-    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr')
+    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before issue comment')
     com = pr.get_issue_comments()
     if com.totalCount:
         for c in com:
             if c:
                 ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
             else:
-                logging.warning(f"contributor missing in issue comment")
+                log.warning(f"contributor missing in issue comment")
 
     # commits
-    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr')
+    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before commits')
     if pr.commits:
         commits = pr.get_commits()
         for c in commits:
@@ -280,20 +280,28 @@ def get_event_from_pr(pr, repo, g, health_check, based_ev=None):
             elif c.commit.author:
                 ev.add_participants(get_from_named_user(c.commit.author), contrib_type=ContribType.dev)
             else:
-                logging.warning(f"contributor missing in commit")
+                log.warning(f"contributor missing in commit")
 
     ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr', force_save=True)
     return health_check
 
 
-def error_log(log, err, sys_stack, repo_missing_path, repo, type):
+def error_log(err, conn, repo, type):
     """
     Log error with stack trace
     """
     log = logging.getLogger('main')
+
+
+    query = f"UPDATE repo SET done = {-1}, ND = \"{type}\" WHERE name = \"{repo}\""
+    log.debug(f"Query update : {query}")
+    cursor = conn.cursor()
+    cursor.execute(query)
+    conn.commit()
+    cursor.close()
+    log.debug(f"{repo} finished")
+
     log.error(err, exc_info=True)
-    with open(repo_missing_path, 'a+') as fd:
-        fd.write(f"{repo}, {type}\n")
 
 def get_todo_repos(conn, run_id):
     limit = 10
@@ -325,7 +333,7 @@ def get_data(repos, repo_missing_path, g, conn, health_check):
             rep = g.get_repo(repo)
 
         except Exception as err:
-            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'get_repo')
+            error_log(err=err, conn=conn, repo=repo, type='get_repo')
             continue
 
         # Get all PR from the repo
@@ -340,7 +348,7 @@ def get_data(repos, repo_missing_path, g, conn, health_check):
 
         except Exception as err:
             log.critical('PR')
-            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'pr')
+            error_log(err=err, conn=conn, repô=repo, type='pr')
 
         # Get all issues from the repo
         try:
@@ -366,7 +374,7 @@ def get_data(repos, repo_missing_path, g, conn, health_check):
                 else:
                     ev.etype = EventType.ONLYISSUE.value
 
-                    health_check.health_check(g)
+                    health_check.health_check(g, moment='issue not pr')
                     ev.add_participants(get_from_named_user(iss.user), contrib_type=ContribType.comment)
 
                     ev = health_check.health_check(g=g, ev=ev, moment='issue user')
@@ -385,10 +393,10 @@ def get_data(repos, repo_missing_path, g, conn, health_check):
 
         except Exception as err:
             log.critical('ISSUE')
-            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'issue')
+            error_log(err=err, conn=conn, repo=repo, type='issue')
 
         try:    
-            log.debug(f"Saving {repo}")
+            log.debug(f"Ending {repo}")
 
             query = f"UPDATE repo SET done = {1} WHERE name = \"{repo}\""
             log.debug(f"Query update : {query}")
@@ -400,7 +408,7 @@ def get_data(repos, repo_missing_path, g, conn, health_check):
         
         except Exception as err:
             log.critical('END')
-            error_log(log, err, sys.exc_info(), repo_missing_path, repo, 'end')
+            error_log(err=err, conn=conn, repo=repo, type='end')
 
 def main(cpr=None):
     now = datetime.datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")
