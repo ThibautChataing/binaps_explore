@@ -333,11 +333,15 @@ def get_todo_repos(conn, run_id):
     # Get list of repo
     cursor = conn.cursor()
     log.debug("choose repos")
-    q = f"UPDATE repo SET token_id={run_id} WHERE id IN (SELECT id FROM repo WHERE token_id=-1 LIMIT {limit})"
+    q = f"SELECT count(distinct name) FROM repo WHERE token_id = {run_id} AND done = {0} LIMIT {limit}"
     cursor.execute(q)
-    conn.commit()
+    result = cursor.fetchall()
+    if result[0][0] == 0 :
+        q = f"UPDATE repo SET token_id={run_id} WHERE id IN (SELECT id FROM repo WHERE token_id=-1 LIMIT {limit})"
+        cursor.execute(q)
+        conn.commit()
 
-    query = f"SELECT name FROM repo WHERE token_id = {run_id} AND done = {0} LIMIT {2*limit}"
+    query = f"SELECT name FROM repo WHERE token_id = {run_id} AND done = {0} LIMIT {limit}"
     repos = [ret[0] for ret in cursor.execute(query).fetchall()]
     cursor.close()
     log.debug(f"find {len(repos)} to do")
