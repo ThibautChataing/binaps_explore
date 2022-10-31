@@ -69,12 +69,14 @@ class Net(nn.Module):
 
 def train(model, device_cpu, device_gpu, train_loader, optimizer, lossFun, epoch, log_interval):
     model.train()
+    eval_loss = 0
     for batch_idx, (data, target) in enumerate(train_loader):
         data = data.to(device_gpu)
         optimizer.zero_grad()
         output = model(data)
         itEW = [par for name, par in model.named_parameters() if name.endswith("enc.weight")]
         loss = lossFun(output, data, next(iter(itEW)))
+        eval_loss += loss.item()
         loss.backward()
         optimizer.step()
         model.clipWeights()
@@ -82,7 +84,7 @@ def train(model, device_cpu, device_gpu, train_loader, optimizer, lossFun, epoch
         if batch_idx % log_interval == 0:
             logging.info(f"Train Epoch: {epoch} [{batch_idx * len(data)}/{len(train_loader.dataset)} "
                          f"({int(100 * batch_idx / len(train_loader))}%)]\tLoss: "
-                         f"{round(100 * batch_idx / len(train_loader),3)}")
+                         f"{round(eval_loss / (batch_idx+1),3)}")
 
     return
 
@@ -100,7 +102,7 @@ def test(model, device_cpu, device_gpu, test_loader, lossFun):
             correct += (output.ne(data.data.view_as(output)).sum(1) == 0).sum()
 
     _, target = next(iter(test_loader))
-    logging.info(f"Test set: Average loss: {test_loss}, Accuracy: {correct}/{len(test_loader.dataset)} "
+    logging.info(f"Test set: Average loss: {test_loss/len(test_loader)}, Accuracy: {correct}/{len(test_loader.dataset)} "
                  f"({int(100*correct/len(test_loader.dataset))}%)")
 
 
@@ -131,7 +133,7 @@ def learn(input, lr, gamma, weight_decay, epochs, hidden_dim, train_set_size, ba
 
     lossFun = mylo.weightedXor(trainDS.getSparsity(), weight_decay, device_gpu)
 
-    logging.info(f"Start training for{epochs}")
+    logging.info(f"Start training for {epochs} epochs")
     scheduler = MultiStepLR(optimizer, [5,7], gamma=gamma)
     for epoch in range(1, epochs + 1):
         train(model, device_cpu, device_gpu, train_loader, optimizer, lossFun, epoch, log_interval)

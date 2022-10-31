@@ -29,7 +29,7 @@ def set_logger(file_name=None):
     log.setLevel(level=logging.DEBUG)
 
     # create formatter and add it to the handlers
-    formatter = logging.Formatter('[%(levelname)s] %(module)s in %(funcName)s at %(lineno)dl : %(message)s')
+    formatter = logging.Formatter('[%(levelname)s] %(asctime)s %(module)s in %(funcName)s at %(lineno)dl : %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
     if file_name:
         # create file handler for logger.
@@ -128,7 +128,7 @@ def main(argu=None):
                     supp_half = (train_data.matmul(hn.cpu()) >= hn.sum().cpu() / 2).sum().cpu().numpy()
                     
                     # obtiens le support maximum
-                    supp_max = train_data.matmul(hn.cpu()).max().cpu().numpy()
+                    supp_max = (train_data.matmul(hn.cpu()).div(hn.sum().cpu()) * 100 ).max().cpu().numpy()
 
                     if supp_full > 0 or supp_half > 0:
                         logging.info(f"({supp_full}/{supp_half}/{supp_max}), {pat.cpu().numpy()}")
@@ -140,18 +140,27 @@ def main(argu=None):
 
 
 if __name__ == '__main__':
-    argument = r"-i C:\Users\Thibaut\Documents\These\code\binaps_contrastive\data\credit_card.dat -o ./output --epochs 20 --batch_size 1000 --test_batch_size 100"
+
+    # data is going from one to max
+    # pattern is goind from 0 to max-1
+    #argument = r"-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_only_versicolor.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10"
     #argument = r"-i C:\Users\Thibaut\Documents\These\code\binaps_explore\Data\accidents.dat -o ./output --epochs 20 --batch_size 1000 --test_batch_size 100"
     
     
-    exp = ['-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_only_setosa.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
- '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_only_versicolor.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
- '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_only_virginica.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
- '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_set_ver.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
- '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_set_vir.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
- '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_setosa.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
- '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_vir_ver.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
- '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\credit_card.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 1000 --test_batch_size 100',
- '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\synthetic_data_1000_1000_10_0.001_INTER_2022-08-29T16h20m33s.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 100 --test_batch_size 10']
-    for e in exp:
-        main(e.split())
+#     exp = ['-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_only_setosa.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
+#  '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_only_versicolor.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
+#  '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_only_virginica.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
+#  '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_set_ver.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
+#  '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_set_vir.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
+#  '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_setosa.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
+#  '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\Iris_vir_ver.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 24 --test_batch_size 10',
+#  '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\credit_card.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 1000 --test_batch_size 100',
+#  '-i C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\input\\synthetic_data_1000_1000_10_0.001_INTER_2022-08-29T16h20m33s.dat -o C:\\Users\\Thibaut\\Documents\\These\\code\\experiments\\output\\binaps --epochs 20 --batch_size 100 --test_batch_size 10']
+#     for e in exp:
+#         main(e.split())
+    #os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
+
+    #argument = r"-i C:\Users\Thibaut\Documents\These\code\binaps_explore\github_explore\data_scrap\v2\github_binary_event_part.dat -o C:\Users\Thibaut\Documents\These\code\binaps_explore\github_explore\data_scrap\ --epochs 150 --batch_size 64 --test_batch_size 64 --hidden_dim 1000 --log_interval 100"
+    #argument = rf'-i C:\Users\Thibaut\Documents\These\code\experiments\synth_simplest\data\synthetic_data_100000_1000_100_0.0_NO_INTER_2022-10-27T14h38m21s.dat -o C:\Users\Thibaut\Documents\These\code\experiments\synth_simplest\output --lr 0.02 --epochs 50 --batch_size 64 --test_batch_size 64 --log_interval 100' 
+    
+    main()#argument.split())
