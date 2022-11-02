@@ -258,6 +258,8 @@ def get_event_from_pr(pr, repo, g, health_check, conn, based_ev=None):
             for c in com:
                 if c:
                     ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
+                    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr during comment')
+
                 else:
                     log.warning(f"contributor missing in comments")
     except Exception as err:
@@ -271,6 +273,7 @@ def get_event_from_pr(pr, repo, g, health_check, conn, based_ev=None):
             for c in com:
                 if c:
                     ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
+                    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr during review comment')
                 else:
                     log.warning(f"contributor missing in review_comment")
     except Exception as err:
@@ -284,6 +287,8 @@ def get_event_from_pr(pr, repo, g, health_check, conn, based_ev=None):
             for c in com:
                 if c:
                     ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
+                    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr during issue comment')
+
                 else:
                     log.warning(f"contributor missing in issue comment")
     except Exception as err:
@@ -302,6 +307,8 @@ def get_event_from_pr(pr, repo, g, health_check, conn, based_ev=None):
                     ev.add_participants(get_from_named_user(c.commit.author), contrib_type=ContribType.dev)
                 else:
                     log.warning(f"contributor missing in commit")
+                ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr during commit')
+                
     except Exception as err:
         log.critical('PR get')
         error_log(err=err, conn=conn, repo=repo, type='pr')
