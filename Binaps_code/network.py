@@ -84,7 +84,7 @@ def train(model, device_cpu, device_gpu, train_loader, optimizer, lossFun, epoch
         if batch_idx % log_interval == 0:
             logging.info(f"Train Epoch: {epoch} [{batch_idx * len(data)}/{len(train_loader.dataset)} "
                          f"({int(100 * batch_idx / len(train_loader))}%)]\tLoss: "
-                         f"{round(eval_loss / (batch_idx+1),3)}")
+                         f"{round(eval_loss / (batch_idx+1),6)}")
 
     return
 
