@@ -87,7 +87,7 @@ class DatDataset(Dataset):
     def __init__(self, dat_file, train_proportion, is_training, device_cpu):
         data = readDatFile(dat_file)
         self.data = np.asarray(data)
-        self.sparsity = np.count_nonzero(self.data) / np.prod(self.data.shape)
+        self.sparsity = np.count_nonzero(self.data) / (self.data.shape[0] * self.data.shape[1])
         logging.info(f"Sparsity of input = {self.sparsity}")
         if is_training:
             ran = np.arange(0, math.ceil(train_proportion * self.data.shape[0]))
