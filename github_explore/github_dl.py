@@ -149,12 +149,14 @@ class CheckpointManager:
         self.conn = conn
         self.event_ids = set()
 
-    def health_check(self, g, ev=None, moment='', force_save=False):
+    def health_check(self, g, ev=None, moment='', force_save=True):
         
         log = logging.getLogger('main')
         if isinstance(ev, Event):
             df = ev.to_dataframe()
-            if (len(df) > 100) or force_save:
+            print(len(df))
+            if (len(df) > 2) or force_save:
+                log.warning(f'Cleaning  ev at {moment}')
                 df = self.date_checkpoint(df, moment)
                 ev.clean_for_savepoint()
 
