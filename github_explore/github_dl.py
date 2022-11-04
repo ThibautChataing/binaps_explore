@@ -154,7 +154,6 @@ class CheckpointManager:
         log = logging.getLogger('main')
         if isinstance(ev, Event):
             df = ev.to_dataframe()
-            print(len(df))
             if (len(df) > 2) or force_save:
                 log.warning(f'Cleaning  ev at {moment}')
                 df = self.date_checkpoint(df, moment)
