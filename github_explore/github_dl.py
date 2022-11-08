@@ -336,7 +336,7 @@ def error_log(err, conn, repo, type):
     log.error(err, exc_info=True)
 
 def get_todo_repos(conn, run_id):
-    limit = 10
+    limit = 1
     log = logging.getLogger("main")
     # Get list of repo
     cursor = conn.cursor()
