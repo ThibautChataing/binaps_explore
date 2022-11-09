@@ -165,5 +165,6 @@ if __name__ == '__main__':
     #argument = rf'-i C:\Users\Thibaut\Documents\These\code\experiments\synth_simplest\data\synthetic_data_100000_1000_100_0.0_NO_INTER_2022-10-27T14h38m21s.dat -o C:\Users\Thibaut\Documents\These\code\experiments\synth_simplest\output --lr 0.02 --epochs 50 --batch_size 64 --test_batch_size 64 --log_interval 100' 
     argument = r"-i C:\Users\Thibaut\Documents\These\code\experiments\exp2\input\Iris_setosa_v2.dat -o C:\Users\Thibaut\Documents\These\code\experiments\exp2\output\ --epochs 150 --batch_size 25 --test_batch_size 25"
     #argument = r"-i C:\Users\Thibaut\Documents\These\code\experiments\exp2\input\Iris_only_setosa_v2.dat -o C:\Users\Thibaut\Documents\These\code\experiments\exp2\output\ --epochs 150 --batch_size 2 --test_batch_size 25"
+    argument = r"-i C:\Users\Thibaut\Documents\These\code\binaps_explore\github_explore\data_scrap\v3\github_binary_event_filter_part.dat -o C:\Users\Thibaut\Documents\These\code\binaps_explore\github_explore\data_scrap\v3\out --epochs 600 --hidden_dim 1000 --log_interval 100"
     
-    main(argument.split())
+    main() #argument.split())
