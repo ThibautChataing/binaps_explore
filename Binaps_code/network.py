@@ -87,9 +87,9 @@ def train(model, device_cpu, device_gpu, train_loader, optimizer, lossFun, epoch
                          f"{round(eval_loss / (batch_idx+1),6)}")
 
         
-        logging.info(f"Train Epoch: {epoch} "
-                         f"\tLoss: "
-                         f"{round(eval_loss / (batch_idx+1),6)}")
+    logging.info(f"Train Epoch: {epoch} "
+                        f"\tLoss: "
+                        f"{round(eval_loss / (batch_idx+1),6)}")
 
     return
 
