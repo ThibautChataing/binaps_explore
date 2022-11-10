@@ -114,6 +114,7 @@ def main(argu=None):
     with torch.no_grad():
         file_pat = os.path.join(args.output_dir, os.path.basename(args.input[:-4]) + f"_{now}.binaps.patterns")
         #logging.info("-"*10 + "Patterns:" + "_"*10)
+        count_pat_qualy = 0
         with open(file_pat, 'w') as patF:
             for hn in myla.BinarizeTensorThresh(weights, .2):   # We take the weight matrice and binarize with the threshold of 0.2
                 # On parcours toute les lignes de la matrice de poids après binarization
@@ -131,10 +132,11 @@ def main(argu=None):
                     supp_max = (train_data.matmul(hn.cpu()).div(hn.sum().cpu()) * 100 ).max().cpu().numpy()
 
                     if supp_full > 0 or supp_half > 0:
-                        logging.info(f"({supp_full}/{supp_half}/{supp_max}), {pat.cpu().numpy()}")
+                        count_pat_qualy += 1
 
                     json.dump(dict(supp_full=supp_full.tolist(), supp_half=supp_half.tolist(), supp_max=supp_max.tolist(), pat=pat.cpu().tolist()), patF)
                     patF.write('\n')
+        logging.critical(f"{count_pat_qualy} quality pattern found")
         logging.info(f"Pattern saved to {file_pat}")
 
     logging.info("Finished.")
@@ -166,5 +168,11 @@ if __name__ == '__main__':
     argument = r"-i C:\Users\Thibaut\Documents\These\code\experiments\exp2\input\Iris_setosa_v2.dat -o C:\Users\Thibaut\Documents\These\code\experiments\exp2\output\ --epochs 150 --batch_size 25 --test_batch_size 25"
     #argument = r"-i C:\Users\Thibaut\Documents\These\code\experiments\exp2\input\Iris_only_setosa_v2.dat -o C:\Users\Thibaut\Documents\These\code\experiments\exp2\output\ --epochs 150 --batch_size 2 --test_batch_size 25"
     argument = r"-i C:\Users\Thibaut\Documents\These\code\binaps_explore\github_explore\data_scrap\v3\github_binary_event_filter_part.dat -o C:\Users\Thibaut\Documents\These\code\binaps_explore\github_explore\data_scrap\v3\out --epochs 600 --hidden_dim 1000 --log_interval 100"
+    argument = r"-i C:\Users\Thibaut\Documents\These\code\binaps_explore\github_explore\data_scrap\v3\github_binary_event_filter_part.dat -o C:\Users\Thibaut\Documents\These\code\binaps_explore\github_explore\data_scrap\v3\out --epochs 600 --hidden_dim 1000 --log_interval 100"
     
-    main() #argument.split())
+    argument = r"-i C:\Users\Thibaut\Documents\These\code\experiments\exp3\input\Iris_versicolor.dat -o C:\Users\Thibaut\Documents\These\code\experiments\exp3\output\ --epochs 150 --batch_size 25 --test_batch_size 25"
+    argument = r"-i C:\Users\Thibaut\Documents\These\code\experiments\exp3\input\Iris_vir_ver.dat -o C:\Users\Thibaut\Documents\These\code\experiments\exp3\output\ --epochs 150 --batch_size 25 --test_batch_size 25"
+    argument = r"-i C:\Users\Thibaut\Documents\These\code\experiments\exp3\input\Iris_only_versicolor.dat -o C:\Users\Thibaut\Documents\These\code\experiments\exp3\output\ --epochs 150 --batch_size 25 --test_batch_size 25"
+
+    
+    main(argument.split())

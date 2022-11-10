@@ -86,6 +86,11 @@ def train(model, device_cpu, device_gpu, train_loader, optimizer, lossFun, epoch
                          f"({int(100 * batch_idx / len(train_loader))}%)]\tLoss: "
                          f"{round(eval_loss / (batch_idx+1),6)}")
 
+        
+        logging.info(f"Train Epoch: {epoch} "
+                         f"\tLoss: "
+                         f"{round(eval_loss / (batch_idx+1),6)}")
+
     return
 
 
