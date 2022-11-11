@@ -22,6 +22,7 @@ from enum import Enum
 import sys
 from collections.abc import Iterable
 import sqlite3
+import gc
 
 from github import Github
 
@@ -106,7 +107,7 @@ class Event:
 
     def clean_for_savepoint(self):
         self.participants = set()
-
+        gc.collect()  # clear memory
 
 
     def to_dataframe(self):
@@ -156,8 +157,11 @@ class CheckpointManager:
             df = ev.to_dataframe()
             if (len(df) > 2) or force_save:
                 log.warning(f'Cleaning  ev at {moment}')
-                df = self.date_checkpoint(df, moment)
+                self.date_checkpoint(df, moment)
                 ev.clean_for_savepoint()
+            # clear memory
+            del df
+            gc.collect()
 
         self.check_remaining_request(g)
         return ev
@@ -171,10 +175,8 @@ class CheckpointManager:
 
         log.debug(f'Data checkpoint at {moment} for {df.repo.unique()}')
         count = df.to_sql(name='event', con=self.conn, index=False, if_exists = 'append', dtype='string')
-        log.debug(f"{count} rows added to event")
+        log.debug(f"{len(df)} rows added to event (count from sql={count}")
         self.event_ids.union(set(df.id.to_list()))
-        df = df.iloc[0:0]
-        return df
 
     def check_remaining_request(self, g):
         """
@@ -234,74 +236,77 @@ def get_event_from_pr(pr, repo, g, health_check, conn, based_ev=None):
         ev = based_ev
 
     
-
     health_check.health_check(g=g, moment='Get event from pr before participant')
 
     try:
         ev.add_participants(get_from_named_user(pr.user), contrib_type=ContribType.dev)
     except Exception as err:
-                    log.critical('PR get')
+                    log.critical('PR get pr user')
                     error_log(err=err, conn=conn, repo=repo, type='pr')
+
+    ev = health_check.health_check(g=g, ev=ev, moment='PR after participant')
 
     try:
         assignes = tuple(get_from_named_user(user) for user in pr.assignees)
         if assignes:
             ev.add_participants(assignes, contrib_type=ContribType.dev)
     except Exception as err:
-        log.critical('PR get')
+        log.critical('PR get assigne')
         error_log(err=err, conn=conn, repo=repo, type='pr')
 
-    try:
-        ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before comment')
+    ev = health_check.health_check(ev=ev, g=g, moment='GET PR before comment')
+
         # comments
-        if pr.comments:
-            com = pr.get_comments()
-            for c in com:
+    if pr.comments:
+        log.debug(f"{pr.comments} comments found")
+        for c in pr.get_comments():
+            try:
                 if c:
                     ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
                     ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr during comment')
-
                 else:
                     log.warning(f"contributor missing in comments")
-    except Exception as err:
-        log.critical('PR get')
-        error_log(err=err, conn=conn, repo=repo, type='pr')
+            except Exception as err:
+                log.critical('PR get comment')
+                error_log(err=err, conn=conn, repo=repo, type='pr')
 
-    try:
-        ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before review comment')
-        if pr.review_comments:
-            com = pr.get_review_comments()
-            for c in com:
+    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before review comment')
+    if pr.review_comments:
+        log.debug(f"{pr.review_comments} review_comments found")
+        for c in pr.get_review_comments():
+            try:
                 if c:
                     ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
                     ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr during review comment')
                 else:
                     log.warning(f"contributor missing in review_comment")
-    except Exception as err:
-        log.critical('PR get')
-        error_log(err=err, conn=conn, repo=repo, type='pr')
+            except Exception as err:
+                log.critical('PR get')
+                error_log(err=err, conn=conn, repo=repo, type='pr')
 
-    try:
-        ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before issue comment')
-        com = pr.get_issue_comments()
-        if com.totalCount:
-            for c in com:
+    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before issue comment')
+    com = pr.get_issue_comments()
+    if com.totalCount:
+        log.debug(f"{com.totalCount} issue comments found")
+        for c in com:
+            try:
                 if c:
                     ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
                     ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr during issue comment')
-
                 else:
                     log.warning(f"contributor missing in issue comment")
-    except Exception as err:
-        log.critical('PR get')
-        error_log(err=err, conn=conn, repo=repo, type='pr')
+            except Exception as err:
+                log.critical('PR get')
+                error_log(err=err, conn=conn, repo=repo, type='pr')
+    del com
+    gc.collect()
 
-    try:
-        # commits
-        ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before commits')
-        if pr.commits:
-            commits = pr.get_commits()
-            for c in commits:
+    # commits
+    ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before commits')
+    if pr.commits:
+        log.debug(f"{pr.commits} commits")
+        for c in pr.get_commits():
+            try:
                 if c.author:
                     ev.add_participants(get_from_named_user(c.author), contrib_type=ContribType.dev)
                 elif c.commit.author:
@@ -309,10 +314,9 @@ def get_event_from_pr(pr, repo, g, health_check, conn, based_ev=None):
                 else:
                     log.warning(f"contributor missing in commit")
                 ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr during commit')
-                
-    except Exception as err:
-        log.critical('PR get')
-        error_log(err=err, conn=conn, repo=repo, type='pr')
+            except Exception as err:
+                log.critical('PR get')
+                error_log(err=err, conn=conn, repo=repo, type='pr')
 
     ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr', force_save=True)
     return health_check
@@ -390,7 +394,9 @@ def get_data(repos, repo_missing_path, g, conn, health_check):
         if not skip:
             for pr in tqdm.tqdm(prs, total=prs.totalCount, desc="PR", leave=False, position=1):
                 health_check = get_event_from_pr(pr=pr, repo=repo, g=g, health_check=health_check, conn=conn)
-
+        
+        del prs
+        gc.collect()
         skip=0
         # Get all issues from the repo
         try:
@@ -444,12 +450,14 @@ def get_data(repos, repo_missing_path, g, conn, health_check):
                     for c in com:
                         ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
                         ev = health_check.health_check(g=g, ev=ev, moment='issue comment')
+                    del com
                 except Exception as err:
                     log.critical('ISSUE')
                     error_log(err=err, conn=conn, repo=repo, type='issue')
             ev = health_check.health_check(g=g, ev=ev, moment='issue comment', force_save=True)
                 
-
+        del issues
+        gc.collect()
 
 
         try:    
@@ -511,5 +519,5 @@ def main(cpr=None):
 
        
 if __name__ == "__main__":
-    #args = r"-o .\output -r 0 -db C:\Users\Thibaut\Documents\These\code\OSCP_data.db"
-    main() #args.split(' '))
+    args = r"-o .\output -r 0 -t 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 -db C:\Users\Thibaut\Documents\These\code\OSCP_data.db"
+    main(args.split(' '))
