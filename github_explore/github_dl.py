@@ -519,5 +519,5 @@ def main(cpr=None):
 
        
 if __name__ == "__main__":
-    args = r"-o .\output -r 0 -t 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 -db C:\Users\Thibaut\Documents\These\code\OSCP_data.db"
-    main(args.split(' '))
+    #args = r"-o .\output -r 0 -db C:\Users\Thibaut\Documents\These\code\OSCP_data.db"
+    main()#args.split(' '))
