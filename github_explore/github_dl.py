@@ -26,6 +26,8 @@ import gc
 
 from github import Github
 
+from sizeof import total_size, sizeof_fmt
+
 class TqdmStream(object):
     """
     Streamer to properly display logging message during a tqdm display
@@ -237,6 +239,7 @@ def get_event_from_pr(pr, repo, g, health_check, conn, based_ev=None):
 
     
     health_check.health_check(g=g, moment='Get event from pr before participant')
+    log_memory(locals())
 
     try:
         ev.add_participants(get_from_named_user(pr.user), contrib_type=ContribType.dev)
@@ -245,6 +248,7 @@ def get_event_from_pr(pr, repo, g, health_check, conn, based_ev=None):
                     error_log(err=err, conn=conn, repo=repo, type='pr')
 
     ev = health_check.health_check(g=g, ev=ev, moment='PR after participant')
+    log_memory(locals())
 
     try:
         assignes = tuple(get_from_named_user(user) for user in pr.assignees)
@@ -255,6 +259,7 @@ def get_event_from_pr(pr, repo, g, health_check, conn, based_ev=None):
         error_log(err=err, conn=conn, repo=repo, type='pr')
 
     ev = health_check.health_check(ev=ev, g=g, moment='GET PR before comment')
+    log_memory(locals())
 
         # comments
     if pr.comments:
@@ -269,7 +274,8 @@ def get_event_from_pr(pr, repo, g, health_check, conn, based_ev=None):
             except Exception as err:
                 log.critical('PR get comment')
                 error_log(err=err, conn=conn, repo=repo, type='pr')
-
+    
+    log_memory(locals())
     ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before review comment')
     if pr.review_comments:
         log.debug(f"{pr.review_comments} review_comments found")
@@ -283,7 +289,8 @@ def get_event_from_pr(pr, repo, g, health_check, conn, based_ev=None):
             except Exception as err:
                 log.critical('PR get')
                 error_log(err=err, conn=conn, repo=repo, type='pr')
-
+   
+    log_memory(locals())
     ev = health_check.health_check(ev=ev, g=g, moment='Get event from pr before issue comment')
     com = pr.get_issue_comments()
     if com.totalCount:
@@ -360,8 +367,22 @@ def get_todo_repos(conn, run_id):
 
     return repos
 
+def log_memory(var: dict):
+    total = 0
+    for k,v in var.items():
+        s = total_size(v)
+        if s > 10**9:  # 1Go
+            logging.critical(f"MEMORY ALERT : {k} at {sizeof_fmt(s)}")
+        elif s > 10**8:  # 100Mo
+            logging.warning(f"Memory alert : {k} at {sizeof_fmt(s)}")
+        total += s
+    if total > 7*10**8:  # 700Mo
+        logging.critical(f"MEMORY ALERT over all vars {sizeof_fmt(total)}")
+        for k,v in var.items():
+            logging.critical(f"{v} : {sizeof_fmt(total)}")
 
-def get_data(repos, repo_missing_path, g, conn, health_check):
+
+def get_data(repos, g, conn, health_check):
     log = logging.getLogger("main")
     for repo in tqdm.tqdm(repos,desc="Repos", leave=True, position=0):  # iterate over all repos
         health_check.event_ids = set()
@@ -385,6 +406,7 @@ def get_data(repos, repo_missing_path, g, conn, health_check):
         try:
             prs = rep.get_pulls(state='all')  # get all pr
             log.debug(f"{prs.totalCount} prs found")
+            log_memory(locals())
 
         except Exception as err:
             skip=1
@@ -393,6 +415,7 @@ def get_data(repos, repo_missing_path, g, conn, health_check):
 
         if not skip:
             for pr in tqdm.tqdm(prs, total=prs.totalCount, desc="PR", leave=False, position=1):
+                log_memory(locals())
                 health_check = get_event_from_pr(pr=pr, repo=repo, g=g, health_check=health_check, conn=conn)
         
         del prs
@@ -411,6 +434,7 @@ def get_data(repos, repo_missing_path, g, conn, health_check):
 
         log.debug(f"{issues.totalCount} issues found")
         for iss in tqdm.tqdm(issues,desc="Issue", total=issues.totalCount, leave=False, position=1):
+            log_memory(locals())
 
             pr = iss.pull_request
             ev = Event(repo=repo, id=iss.id, nbr=iss.number)
@@ -433,6 +457,7 @@ def get_data(repos, repo_missing_path, g, conn, health_check):
                 except Exception as err:
                     log.critical('ISSUE')
                     error_log(err=err, conn=conn, repo=repo, type='issue')
+                log_memory(locals())
 
                 try:
                     ev = health_check.health_check(g=g, ev=ev, moment='issue user')
@@ -448,6 +473,7 @@ def get_data(repos, repo_missing_path, g, conn, health_check):
                     ev = health_check.health_check(g=g, ev=ev, moment='issue comment')
                     com = iss.get_comments()
                     for c in com:
+                        log_memory(locals())
                         ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
                         ev = health_check.health_check(g=g, ev=ev, moment='issue comment')
                     del com
@@ -501,16 +527,13 @@ def main(cpr=None):
     #  connect to db
     conn = init_db(args.database)
 
-    #  Define path for input/output file
-    repo_missing_path =  os.path.join(root, r'repos_name_missing.txt')
-
     ### Main process
     health_check = CheckpointManager(conn=conn)
     g = Github(login_or_token=args.token)  # init github conenction
 
     repos = get_todo_repos(conn, run_id=args.run_id)
     while len(repos) > 0:
-        get_data(repos=repos, repo_missing_path=repo_missing_path, g=g, conn=conn, health_check=health_check)
+        get_data(repos=repos, g=g, conn=conn, health_check=health_check)
         log.info(f"Batch of repos done, trying to take more")
         repos = get_todo_repos(conn, run_id=args.run_id)
 
@@ -520,4 +543,4 @@ def main(cpr=None):
        
 if __name__ == "__main__":
     #args = r"-o .\output -r 0 -db C:\Users\Thibaut\Documents\These\code\OSCP_data.db"
-    main()#args.split(' '))
+    main() #args.split(' '))
