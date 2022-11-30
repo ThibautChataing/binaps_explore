@@ -381,6 +381,44 @@ def log_memory(var: dict):
         for k,v in var.items():
             logging.critical(f"{v} : {sizeof_fmt(total)}")
 
+def get_pr_info(pr, repo, g, health_check, conn):
+    """
+    Get data about PR (created, closed ...) one line by pr for DB
+    """
+    health_check.health_check(g=g, moment='Get event info for PR')
+
+    attribut = ['id', 'number', 'created_at', 'closed_at', 'merged', 'merged_at', 'state']
+    if pr.as_issue():
+        typ = EventType.ISSUEPR.value
+    else:
+        typ = EventType.ONLYPR.value
+        
+    df = pd.DataFrame({'repo': repo, 'type': typ}, index=[0])
+
+    for a in attribut:
+        df[a] = getattr(pr, a, pd.NA)
+    
+    df.to_sql('event', con=conn, if_exists='append', dtype='str', index=False)
+    return health_check
+
+
+def get_iss_info(iss, repo, g, health_check, conn):
+    """
+    Get data about issue (created, closed ...) one line by issue for DB
+    
+    """
+    health_check.health_check(g=g, moment='Get event info for PR')
+
+    attribut = ['id', 'number', 'created_at', 'closed_at', 'merged', 'merged_at', 'state']
+        
+    df = pd.DataFrame({'repo': repo, 'type': EventType.ONLYISSUE.value}, index=[0])
+
+    for a in attribut:
+        df[a] = getattr(iss, a, pd.NA)
+    
+    df.to_sql('event', con=conn, if_exists='append', dtype='str', index=False)
+    return health_check
+
 
 def get_data(repos, g, conn, health_check):
     log = logging.getLogger("main")
@@ -416,7 +454,8 @@ def get_data(repos, g, conn, health_check):
         if not skip:
             for pr in tqdm.tqdm(prs, total=prs.totalCount, desc="PR", leave=False, position=1):
                 log_memory(locals())
-                health_check = get_event_from_pr(pr=pr, repo=repo, g=g, health_check=health_check, conn=conn)
+                #health_check = get_event_from_pr(pr=pr, repo=repo, g=g, health_check=health_check, conn=conn)  # used to get commit and comment
+                health_check = get_pr_info(pr=pr, repo=repo, g=g, health_check=health_check, conn=conn)  # used to get pr data
         
         del prs
         gc.collect()
@@ -446,41 +485,43 @@ def get_data(repos, g, conn, health_check):
                 if pr.id in health_check.event_ids:
                     continue
                 else:
-                    health_check = get_event_from_pr(pr, repo, g, health_check=health_check, conn=conn, based_ev=ev)
+                    # health_check = get_event_from_pr(pr, repo, g, health_check=health_check, conn=conn, based_ev=ev)
+                    health_check = get_pr_info(pr=pr, repo=repo, g=g, health_check=health_check, conn=conn)  # used to get pr data
 
             else:
-                ev.etype = EventType.ONLYISSUE.value
+                    health_check = get_iss_info(iss=iss, repo=repo, g=g, health_check=health_check, conn=conn)
+            #     ev.etype = EventType.ONLYISSUE.value
 
-                try:
-                    health_check.health_check(g, moment='issue not pr')
-                    ev.add_participants(get_from_named_user(iss.user), contrib_type=ContribType.comment)
-                except Exception as err:
-                    log.critical('ISSUE')
-                    error_log(err=err, conn=conn, repo=repo, type='issue')
-                log_memory(locals())
+            #     try:
+            #         health_check.health_check(g, moment='issue not pr')
+            #         ev.add_participants(get_from_named_user(iss.user), contrib_type=ContribType.comment)
+            #     except Exception as err:
+            #         log.critical('ISSUE')
+            #         error_log(err=err, conn=conn, repo=repo, type='issue')
+            #     log_memory(locals())
 
-                try:
-                    ev = health_check.health_check(g=g, ev=ev, moment='issue user')
-                    assignes = tuple(get_from_named_user(user) for user in iss.assignees)
-                    if assignes:
-                        ev.add_participants(assignes, contrib_type=ContribType.comment)
-                except Exception as err:
-                    log.critical('ISSUE')
-                    error_log(err=err, conn=conn, repo=repo, type='issue')
+            #     try:
+            #         ev = health_check.health_check(g=g, ev=ev, moment='issue user')
+            #         assignes = tuple(get_from_named_user(user) for user in iss.assignees)
+            #         if assignes:
+            #             ev.add_participants(assignes, contrib_type=ContribType.comment)
+            #     except Exception as err:
+            #         log.critical('ISSUE')
+            #         error_log(err=err, conn=conn, repo=repo, type='issue')
 
-                try:    
-                    # comments
-                    ev = health_check.health_check(g=g, ev=ev, moment='issue comment')
-                    com = iss.get_comments()
-                    for c in com:
-                        log_memory(locals())
-                        ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
-                        ev = health_check.health_check(g=g, ev=ev, moment='issue comment')
-                    del com
-                except Exception as err:
-                    log.critical('ISSUE')
-                    error_log(err=err, conn=conn, repo=repo, type='issue')
-            ev = health_check.health_check(g=g, ev=ev, moment='issue comment', force_save=True)
+            #     try:    
+            #         # comments
+            #         ev = health_check.health_check(g=g, ev=ev, moment='issue comment')
+            #         com = iss.get_comments()
+            #         for c in com:
+            #             log_memory(locals())
+            #             ev.add_participants(get_from_named_user(c.user), contrib_type=ContribType.comment)
+            #             ev = health_check.health_check(g=g, ev=ev, moment='issue comment')
+            #         del com
+            #     except Exception as err:
+            #         log.critical('ISSUE')
+            #         error_log(err=err, conn=conn, repo=repo, type='issue')
+            # ev = health_check.health_check(g=g, ev=ev, moment='issue comment', force_save=True)
                 
         del issues
         gc.collect()
