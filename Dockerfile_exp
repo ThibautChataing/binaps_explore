@@ -1,0 +1,33 @@
+From pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime
+
+ENV PYTHONPATH "${PYTHONPATH}:/workspace/model"
+
+RUN apt-get update; exit 0
+        #&& rm -rf /var/lib/apt/lists/*
+
+# To run on OVH AI training the user 42420 should own the workspace
+RUN mkdir -p /workspace && chown -R 42420:42420 /workspace
+RUN mkdir /workspace/model
+ENV HOME /workspace
+WORKDIR /workspace
+
+RUN python -m pip install pandas scipy
+
+COPY ./Binaps_code /workspace/model/.
+COPY ./run_binaps.py /workspace/.
+
+
+# ENTRYPOINT ["python", /
+#     "/workspace/run_binapsC.py", /
+#     "--output", /
+#     "/workspace/container_0"]
+
+# CMD ["-i", /
+#     "/workspace/and_synthetic_scale_10_10000_10_0.001_0.05.dat"]
+
+
+# To test as in ovh :
+# docker build . -f Dockerfile_exp -t tchataing/binaps:exp
+# docker run --rm -it --user=42420:42420 tchataing/binaps:test
+
+# ovhai job run --name binapsC-sonar --flavor ai1-1-gpu --gpu 1 --volume input@GRA/:/workspace/container_0:RW --volume output@GRA/:/workspace/container_1:RW tchataing/binapsc:exp -- python  -o /workspace/container_1 -i";

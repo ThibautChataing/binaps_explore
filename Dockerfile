@@ -1,4 +1,4 @@
-                                                                                          From pytorch/pytorch:1.7.0-cuda11.0-cudnn8-devel
+From pytorch/pytorch:1.7.0-cuda11.0-cudnn8-devel
 
 RUN apt-get update; exit 0
         #&& rm -rf /var/lib/apt/lists/*

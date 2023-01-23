@@ -56,11 +56,21 @@ def set_logger(file_name=None, log_level=logging.DEBUG):
 
 
 def get_repo_descriptions(name, token, root):
-    """ Download repository descriptions"""
+    """ Download repository descriptions
+    Return True is done
+    Return False if failed
+    """
+    log = logging.getLogger('main')
+
 
     response = get_github_api(url=f'https://api.github.com/repos/{name}', token=token)
 
-    save_to_json(response.json(), suffix='description', name=name, root=root)
+    if response.status_code == 200:
+        save_to_json(response.json(), suffix='description', name=name, root=root)
+        return True
+    else:
+        log.critical(f"Request({name}) [{response.status_code}] : {response.text}")
+        return False
 
 
 def get_github_api(url, token, params=None):
@@ -119,82 +129,82 @@ def get_save_PR(name, token, root):
         save_to_json(response.json(), f'pullRequest{page}', name, root)
 
 
-def get_save_issue(name, token, root):
-    """Download information about all pull requests"""
-    log = logging.getLogger('main')
-    log.debug(f"Save issue for {name}")
-    page = 1
-    params = {
-        'per_page': 100,
-        'page': page
+# def get_save_issue(name, token, root):
+#     """Download information about all pull requests"""
+#     log = logging.getLogger('main')
+#     log.debug(f"Save issue for {name}")
+#     page = 1
+#     params = {
+#         'per_page': 100,
+#         'page': page
 
-        }
-    response = get_github_api(url=f'https://api.github.com/repos/{name}/issues', token=token, params=params)
+#         }
+#     response = get_github_api(url=f'https://api.github.com/repos/{name}/issues', token=token, params=params)
 
-    save_to_json(response.json(), f'pullRequest{page}', name, root)
+#     save_to_json(response.json(), f'pullRequest{page}', name, root)
 
-    while response.status_code == 200:
-        page += 1
-        params = {
-            'per_page': 100,
-            'page': page,
-            'state': 'all'
+#     while response.status_code == 200:
+#         page += 1
+#         params = {
+#             'per_page': 100,
+#             'page': page,
+#             'state': 'all'
 
-        }
-        response = get_github_api(url=f'https://api.github.com/repos/{name}/issues', token=token, params=params)
-        save_to_json(response.json(), f'pullRequest{page}', name, root)
+#         }
+#         response = get_github_api(url=f'https://api.github.com/repos/{name}/issues', token=token, params=params)
+#         save_to_json(response.json(), f'pullRequest{page}', name, root)
 
+# ND : Not used
+# def get_save_issue_comments(name, token, root):
+#     """Download information about all comments in issue"""
+#     log = logging.getLogger('main')
+#     log.debug(f"Save issue comments for {name}")
+#     page = 1
+#     params = {
+#         'per_page': 100,
+#         'page': page
 
-def get_save_issue_comments(name, token, root):
-    """Download information about all comments in issue"""
-    log = logging.getLogger('main')
-    log.debug(f"Save issue comments for {name}")
-    page = 1
-    params = {
-        'per_page': 100,
-        'page': page
+#         }
+#     response = get_github_api(url=f'https://api.github.com/repos/{name}/issues/comments', token=token, params=params)
 
-        }
-    response = get_github_api(url=f'https://api.github.com/repos/{name}/issues/comments', token=token, params=params)
+#     save_to_json(response.json(), f'issueComment{page}', name, root)
 
-    save_to_json(response.json(), f'issueComment{page}', name, root)
+#     while response.status_code == 200:
+#         page += 1
+#         params = {
+#             'per_page': 100,
+#             'page': page,
+#             'state': 'all'
 
-    while response.status_code == 200:
-        page += 1
-        params = {
-            'per_page': 100,
-            'page': page,
-            'state': 'all'
+#         }
+#         response = get_github_api(url=f'https://api.github.com/repos/{name}/issues/comments', token=token, params=params)
+#         save_to_json(response.json(), f'issueComment{page}', name, root)
 
-        }
-        response = get_github_api(url=f'https://api.github.com/repos/{name}/issues/comments', token=token, params=params)
-        save_to_json(response.json(), f'issueComment{page}', name, root)
+# ND : Not used
+# def get_save_review_comments(name, token, root):
+#     """Download information about all comments in issue"""
+#     log = logging.getLogger('main')
+#     log.debug(f"Save review comments for {name}")
+#     page = 1
+#     params = {
+#         'per_page': 100,
+#         'page': page
 
+#         }
+#     response = get_github_api(url=f'https://api.github.com/repos/{name}/pulls/comments', token=token, params=params)
 
-def get_save_review_comments(name, token, root):
-    """Download information about all comments in issue"""
-    log = logging.getLogger('main')
-    log.debug(f"Save review comments for {name}")
-    page = 1
-    params = {
-        'per_page': 100,
-        'page': page
+#     save_to_json(response.json(), f'reviewComment{page}', name, root)
 
-        }
-    response = get_github_api(url=f'https://api.github.com/repos/{name}/pulls/comments', token=token, params=params)
+#     while response.status_code == 200:
+#         page += 1
+#         params = {
+#             'per_page': 100,
+#             'page': page,
+#             'state': 'all'
 
-    save_to_json(response.json(), f'reviewComment{page}', name, root)
-
-    while response.status_code == 200:
-        page += 1
-        params = {
-            'per_page': 100,
-            'page': page,
-            'state': 'all'
-
-        }
-        response = get_github_api(url=f'https://api.github.com/repos/{name}/pulls/comments', token=token, params=params)
-        save_to_json(response.json(), f'reviewComment{page}', name, root)
+#         }
+#         response = get_github_api(url=f'https://api.github.com/repos/{name}/pulls/comments', token=token, params=params)
+#         save_to_json(response.json(), f'reviewComment{page}', name, root)
 
 
 def get_commits(prs, name, token, root):
@@ -242,9 +252,9 @@ def main(cpr=None):
     parser = argparse.ArgumentParser(description='github scrapping')
     parser.add_argument('-o', '--output', required=True,
                         help='dir for output files')
-    parser.add_argument('-r', '--run_id', required=True,
-                        help='run_id for db')
-    parser.add_argument('-repo', '--repo_file', required=True, default='OSCP_data.db',
+    # parser.add_argument('-r', '--run_id', required=True,
+    #                     help='run_id for db')
+    parser.add_argument('-repo', '--repo_file', required=True,
                         help='Source file with repos')
     parser.add_argument('-t', '--token', required=False,
                         help='token for github')
@@ -259,28 +269,29 @@ def main(cpr=None):
         root_log = args.output
 
     #  Logging managment
-    log_file = os.path.join(root_log, fr'github_dl_id{args.run_id}_{now}.log')
+    log_file = os.path.join(root_log, fr'github_dl_id_{now}.log')
     set_logger(log_file)
     log = logging.getLogger('main')
     log.critical("start")
 
     # Get repo lists from a file that look like 1:['user/repo', 'other/truc'...]
     with open(args.repo_file, 'r') as fd:
-        repos = json.load(fd)
+        repos = fd.read().split(',')
 
-    my_repo = repos[args.run_id]
+    #my_repo = repos[args.run_id]
 
-    for rep in my_repo:
-        get_repo_descriptions(rep, args.token, args.output)
+    for rep in repos:
+        done = get_repo_descriptions(rep, args.token, args.output)
+        
+        if done:
+            get_save_PR(rep, args.token, args.output)
 
-        get_save_PR(rep, args.token, args.output)
+        # get_save_issue_comments(rep, args.token, args.output)
 
-        get_save_issue_comments(rep, args.token, args.output)
-
-        get_save_review_comments(rep, args.token, args.output)
+        # get_save_review_comments(rep, args.token, args.output)
 
 
 if __name__ == "__main__":
-    args = r"-o C:\Users\Thibaut\Documents\These\code\binaps_explore\github_explore\test -r 1 -repo C:\Users\Thibaut\Documents\These\code\binaps_explore\github_explore\test\repo.json -t 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"
+    args = r"-o C:\Users\Thibaut\Documents\These\code\binaps_explore\github_explore\test -repo C:\Users\Thibaut\Documents\These\code\binaps_explore\github_explore\test\repos.csv -t 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"
     main(args.split(' '))
 

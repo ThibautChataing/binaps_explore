@@ -398,6 +398,11 @@ def get_pr_info(pr, repo, g, health_check, conn):
     for a in attribut:
         df[a] = getattr(pr, a, pd.NA)
     
+    user = get_from_named_user(pr.user)
+    df_user = pd.DataFrame(data=[user], columns=['user_id', 'user_login', 'user_name', 'user_email'], index=[0])
+    df = pd.concat([df, df_user], axis=1)
+
+
     df.to_sql('event', con=conn, if_exists='append', dtype='str', index=False)
     return health_check
 
@@ -410,12 +415,16 @@ def get_iss_info(iss, repo, g, health_check, conn):
     health_check.health_check(g=g, moment='Get event info for PR')
 
     attribut = ['id', 'number', 'created_at', 'closed_at', 'merged', 'merged_at', 'state']
+
+    user = get_from_named_user(iss.user)
         
     df = pd.DataFrame({'repo': repo, 'type': EventType.ONLYISSUE.value}, index=[0])
 
     for a in attribut:
         df[a] = getattr(iss, a, pd.NA)
     
+    df_user = pd.DataFrame(user, ['user_id', 'user_login', 'user_name', 'user_email'])
+    df = pd.concat([df, df_user])
     df.to_sql('event', con=conn, if_exists='append', dtype='str', index=False)
     return health_check
 
@@ -583,5 +592,5 @@ def main(cpr=None):
 
        
 if __name__ == "__main__":
-    #args = r"-o .\output -r 0 -db C:\Users\Thibaut\Documents\These\code\OSCP_data.db"
-    main() #args.split(' '))
+    args = r"-o .\output -r 0 -db C:\Users\Thibaut\Documents\These\code\OSCP_data.db"
+    main(args.split(' '))

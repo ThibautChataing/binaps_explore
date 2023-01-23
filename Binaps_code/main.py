@@ -26,6 +26,8 @@ def set_logger(file_name=None):
 
     # create logger for prd_ci
     log = logging.getLogger()
+    if len(log.handlers) > 0:
+        log.removeHandler(log.handlers[0])
     log.setLevel(level=logging.DEBUG)
 
     # create formatter and add it to the handlers
@@ -82,7 +84,7 @@ def main(argu=None):
     parser.add_argument('--no_gpu', action='store_true', default=False,
                         help='Force to use only cpu')
     args = parser.parse_args(argu)
-    now =datetime.datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")
+    now = datetime.datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")
     
     if not os.path.isdir(args.output_dir):
         os.makedirs(args.output_dir)
@@ -143,8 +145,15 @@ def main(argu=None):
 
 
 if __name__ == '__main__':
-
+    import time
     # data is going from one to max
-    # pattern is goind from 0 to max-1
-
-    main() #argument.split())
+    # pattern is goind from 0 to max-
+    input_file = [
+        rf"C:\Users\Thibaut\Documents\These\code\binaps_contrastive\data\CICIDS2017\binary\CICID_bin_train_class{i}.dat" for i in range(9)
+        ]
+    #output = r"C:\Users\Thibaut\Documents\These\code\binaps_contrastive\data\cyber_infection\output"
+    output = r"C:\Users\Thibaut\Documents\These\code\binaps_contrastive\data\CICIDS2017\output"
+    for in_f in input_file:
+        arg = rf"-i {in_f} -o {output} --epochs 1000 --log_interval 1000 --batch_size 2048 --test_batch_size 1024"
+        main(arg.split(' '))
+        time.sleep(1)
