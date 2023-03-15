@@ -26,8 +26,9 @@ def set_logger(file_name=None):
 
     # create logger for prd_ci
     log = logging.getLogger()
-    if len(log.handlers) > 0:
+    while log.hasHandlers():
         log.removeHandler(log.handlers[0])
+
     log.setLevel(level=logging.DEBUG)
 
     # create formatter and add it to the handlers
@@ -48,6 +49,34 @@ def set_logger(file_name=None):
         log.addHandler(fh)
 
     log.addHandler(ch)
+
+def extract_pattern(file_name:str, weights, train_data, ):
+    with torch.no_grad():
+        #logging.info("-"*10 + "Patterns:" + "_"*10)
+        count_pat_qualy = 0
+        with open(file_name, 'w') as patF:
+            for hn in myla.BinarizeTensorThresh(weights, .2):   # We take the weight matrice and binarize with the threshold of 0.2
+                # On parcours toute les lignes de la matrice de poids après binarization
+                pat = torch.squeeze(hn.nonzero())
+
+                if hn.sum() >= 2:
+                    #  Compte du nombre de ligne dans lesquelles on trouve le pattern
+                    #  train_data.matmul(hn.cpu()) -> vector de int où count sur j de train_data[i,j] = hn[i]
+                    supp_full = (train_data.matmul(hn.cpu()) == hn.sum().cpu()).sum().cpu().numpy()
+
+                    # compte du numbre de ligne dans lesquelles on trouve au moins la moitié du pattern
+                    supp_half = (train_data.matmul(hn.cpu()) >= hn.sum().cpu() / 2).sum().cpu().numpy()
+                    
+                    # obtiens le support maximum
+                    supp_max = (train_data.matmul(hn.cpu()).div(hn.sum().cpu()) * 100 ).max().cpu().numpy()
+
+                    if supp_full > 0 or supp_half > 0:
+                        count_pat_qualy += 1
+
+                    json.dump(dict(supp_full=supp_full.tolist(), supp_half=supp_half.tolist(), supp_max=supp_max.tolist(), pat=pat.cpu().tolist()), patF)
+                    patF.write('\n')
+        logging.critical(f"{count_pat_qualy} quality pattern found")
+        logging.info(f"Pattern saved to {file_name}")
 
 
 def main(argu=None):
@@ -83,6 +112,8 @@ def main(argu=None):
                         help='number of threads to use (default: 16)')
     parser.add_argument('--no_gpu', action='store_true', default=False,
                         help='Force to use only cpu')
+    parser.add_argument('--save_best', action='store_true', default=False,
+                        help='Force to use only cpu')
     args = parser.parse_args(argu)
     now = datetime.datetime.now().strftime("%Y-%m-%dT%Hh%Mm%Ss")
     
@@ -106,40 +137,18 @@ def main(argu=None):
         logging.info("Working on GPU")
 
     logging.debug("Start")
-    model, weights, train_data = mynet.learn(args.input, args.lr, args.gamma, args.weight_decay, args.epochs, args.hidden_dim, args.train_set_size, args.batch_size, args.test_batch_size, args.log_interval, device_cpu, device_gpu)
+    model, weights, train_data, best_weight = mynet.learn(args.input, args.lr, args.gamma, args.weight_decay, args.epochs, args.hidden_dim, args.train_set_size, args.batch_size, args.test_batch_size, args.log_interval, device_cpu, device_gpu, args.save_best)
 
     if args.save_model:
         file = os.path.join(args.output_dir, os.path.basename(args.input[:-4]) + f"_{now}_ternary_net.pt")
         torch.save(model.state_dict(), file)
         logging.info(f"Model saved to {file}")
 
-    with torch.no_grad():
-        file_pat = os.path.join(args.output_dir, os.path.basename(args.input[:-4]) + f"_{now}.binaps.patterns")
-        #logging.info("-"*10 + "Patterns:" + "_"*10)
-        count_pat_qualy = 0
-        with open(file_pat, 'w') as patF:
-            for hn in myla.BinarizeTensorThresh(weights, .2):   # We take the weight matrice and binarize with the threshold of 0.2
-                # On parcours toute les lignes de la matrice de poids après binarization
-                pat = torch.squeeze(hn.nonzero())
-
-                if hn.sum() >= 2:
-                    #  Compte du nombre de ligne dans lesquelles on trouve le pattern
-                    #  train_data.matmul(hn.cpu()) -> vector de int où count sur j de train_data[i,j] = hn[i]
-                    supp_full = (train_data.matmul(hn.cpu()) == hn.sum().cpu()).sum().cpu().numpy()
-
-                    # compte du numbre de ligne dans lesquelles on trouve au moins la moitié du pattern
-                    supp_half = (train_data.matmul(hn.cpu()) >= hn.sum().cpu() / 2).sum().cpu().numpy()
-                    
-                    # obtiens le support maximum
-                    supp_max = (train_data.matmul(hn.cpu()).div(hn.sum().cpu()) * 100 ).max().cpu().numpy()
-
-                    if supp_full > 0 or supp_half > 0:
-                        count_pat_qualy += 1
-
-                    json.dump(dict(supp_full=supp_full.tolist(), supp_half=supp_half.tolist(), supp_max=supp_max.tolist(), pat=pat.cpu().tolist()), patF)
-                    patF.write('\n')
-        logging.critical(f"{count_pat_qualy} quality pattern found")
-        logging.info(f"Pattern saved to {file_pat}")
+    file_pat = os.path.join(args.output_dir, os.path.basename(args.input[:-4]) + f"_{now}.binaps.patterns")
+    extract_pattern(file_name=file_pat, weights=weights, train_data=train_data)
+    if args.save_best:
+        file_pat = os.path.join(args.output_dir, os.path.basename(args.input[:-4]) + f"_{now}_BEST.binaps.patterns")
+        extract_pattern(file_name=file_pat, weights=best_weight, train_data=train_data)
 
     logging.info("Finished.")
 

@@ -109,9 +109,11 @@ def test(model, device_cpu, device_gpu, test_loader, lossFun):
     _, target = next(iter(test_loader))
     logging.info(f"Test set: Average loss: {test_loss/len(test_loader)}, Accuracy: {correct}/{len(test_loader.dataset)} "
                  f"({int(100*correct/len(test_loader.dataset))}%)")
+    
+    return test_loss/len(test_loader)
 
 
-def learn(input, lr, gamma, weight_decay, epochs, hidden_dim, train_set_size, batch_size, test_batch_size, log_interval, device_cpu, device_gpu):
+def learn(input, lr, gamma, weight_decay, epochs, hidden_dim, train_set_size, batch_size, test_batch_size, log_interval, device_cpu, device_gpu, save_best):
 
     logging.debug("Init dataset")
     kwargs = {}
@@ -140,10 +142,22 @@ def learn(input, lr, gamma, weight_decay, epochs, hidden_dim, train_set_size, ba
 
     logging.info(f"Start training for {epochs} epochs")
     scheduler = MultiStepLR(optimizer, [5,7], gamma=gamma)
+
+    current_best_loss = 42**2
+    best_weight = None
     for epoch in range(1, epochs + 1):
         train(model, device_cpu, device_gpu, train_loader, optimizer, lossFun, epoch, log_interval)
 
-        test(model, device_cpu, device_gpu, test_loader, lossFun)
+        loss = test(model, device_cpu, device_gpu, test_loader, lossFun)
         scheduler.step()
+
+        if save_best:
+            if (loss < current_best_loss) and (epoch > 24):  # tampon because initialisation can biase anything
+                logging.info(f"Update best model at epoch {epoch} for loss {loss}")
+                current_best_loss = loss
+                best_weight = new_weights.clone().detach()
+                
+
+
     logging.info("Training done")
-    return model, new_weights, trainDS
+    return model, new_weights, trainDS, best_weight
